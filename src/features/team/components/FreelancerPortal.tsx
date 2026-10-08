@@ -251,29 +251,63 @@ const FreelancerPortal: React.FC<FreelancerPortalProps> = ({ accessId, teamMembe
     }
 
 return (
-    <div className="min-h-screen bg-white text-public-text-primary p-3 md:p-4 sm:p-6 lg:p-8">
-        <div className="max-w-5xl mx-auto">
-            <header className="mb-6 md:mb-8 p-3 md:p-4 sm:p-6 bg-white/95 backdrop-blur-xl rounded-3xl shadow-xl border border-slate-200 widget-animate">
-                <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
-                    <div className="flex items-center gap-4">
-                        <div className="w-14 h-14 rounded-full overflow-hidden shrink-0 bg-blue-100 text-blue-700 flex items-center justify-center text-xl font-bold">
+    <div className="freelancer-portal min-h-screen bg-[#f4f6f9] text-slate-800 px-3 py-5 sm:px-6 sm:py-8">
+        <div className="max-w-6xl mx-auto">
+            <header className="relative isolate overflow-hidden mb-5 sm:mb-7 rounded-[1.75rem] bg-slate-900 text-white shadow-xl shadow-slate-900/10 widget-animate">
+                <div className="absolute -right-16 -top-28 h-72 w-72 rounded-full border border-white/10" />
+                <div className="absolute -right-2 -top-14 h-52 w-52 rounded-full border border-white/10" />
+                <div className="relative flex flex-col gap-6 p-5 sm:p-8 md:flex-row md:items-center md:justify-between md:p-10">
+                    <div className="flex items-center gap-4 sm:gap-5">
+                        <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-2xl overflow-hidden shrink-0 bg-white/10 text-white ring-1 ring-white/20 flex items-center justify-center text-2xl font-semibold shadow-lg">
                             {member.avatarUrl ? <img src={member.avatarUrl} alt={`${member.name} avatar`} className="w-full h-full object-cover" /> : member.name?.charAt(0).toUpperCase() || '?'}
                         </div>
-                        <div>
-                            <h1 className="text-2xl md:text-3xl font-bold text-slate-800">Portal Tim / Vendor</h1>
-                            <p className="text-base md:text-lg text-slate-600 mt-1">Selamat Datang, {member.name}</p>
+                        <div className="min-w-0">
+                            <p className="text-[11px] sm:text-xs font-medium uppercase tracking-[0.2em] text-slate-300">Portal Freelancer</p>
+                            <h1 className="mt-1 text-2xl sm:text-3xl font-semibold tracking-tight text-white">Halo, {member.name}</h1>
+                            <p className="mt-1.5 text-sm text-slate-300">Kelola agenda, pembayaran, dan kinerja Anda.</p>
                         </div>
                     </div>
                     {profile?.phone && (
-                        <div className="lg:w-[360px]">
-                            <HelpBox variant="public" phone={profile.phone} />
-                        </div>
+                        <HelpBox
+                            variant="public"
+                            phone={profile.phone}
+                            buttonOnly
+                            className="relative z-10 w-full sm:w-fit !bg-white !text-slate-800 !shadow-none hover:!bg-slate-100 focus:!ring-white"
+                        />
                     )}
                 </div>
             </header>
-            <div className="bg-white/95 backdrop-blur-xl rounded-2xl shadow-lg border border-slate-200 mb-6 p-2.5 widget-animate" style={{ animationDelay: '100ms' }}><nav className="flex space-x-2 overflow-x-auto">{tabs.map(tab => (<button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`shrink-0 inline-flex items-center justify-center py-2.5 px-4 rounded-xl font-semibold text-sm transition-all duration-200 ${activeTab === tab.id ? 'bg-blue-500 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'}`}>{tab.label}</button>))}</nav></div>
+            <div className="mb-6 rounded-2xl border border-slate-200/80 bg-white p-2 shadow-sm widget-animate" style={{ animationDelay: '100ms' }}>
+                <nav className="grid grid-cols-4 gap-1.5 sm:flex" aria-label="Navigasi portal freelancer" role="tablist">
+                    {tabs.map(tab => {
+                        const TabIcon = tab.id === 'dashboard'
+                            ? HomeIcon
+                            : tab.id === 'projects'
+                                ? FolderKanbanIcon
+                                : tab.id === 'payments'
+                                    ? CreditCardIcon
+                                    : StarIcon;
+                        const isActive = activeTab === tab.id;
+                        return (
+                            <button
+                                key={tab.id}
+                                type="button"
+                                role="tab"
+                                aria-label={tab.label}
+                                aria-selected={isActive}
+                                onClick={() => setActiveTab(tab.id)}
+                                className={`shrink-0 inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 ${isActive ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'}`}
+                            >
+                                <TabIcon className="h-4 w-4" />
+                                <span className="hidden sm:inline">{tab.label}</span>
+                                <span className="sm:hidden">{tab.id === 'projects' ? 'Acara' : tab.id === 'payments' ? 'Fee' : tab.id === 'performance' ? 'Kinerja' : 'Dasbor'}</span>
+                            </button>
+                        );
+                    })}
+                </nav>
+            </div>
             <main>{renderTabContent()}</main>
-            <Modal isOpen={!!selectedProject} onClose={() => setSelectedProject(null)} title={`Detail Acara Pernikahan: ${selectedProject?.projectName}`} size="3xl">
+            <Modal isOpen={!!selectedProject} onClose={() => setSelectedProject(null)} title="Detail Acara Pernikahan" size="3xl">
                 {selectedProject && <ProjectDetailModal project={selectedProject} member={member} showNotification={showNotification} onClose={() => setSelectedProject(null)} />}
             </Modal>
             
@@ -357,41 +391,76 @@ const DashboardTab: React.FC<{ member: TeamMember, projects: Project[], teamProj
 
     return (
         <div className="space-y-6">
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
-                    <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Fee Diterima</p>
-                    <p className="text-lg font-bold text-slate-800 mt-1">{formatDisplayCurrency(stats.paidFee)}</p>
-                </div>
-                <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
-                    <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Fee Pending</p>
-                    <p className="text-lg font-bold text-slate-800 mt-1">{formatDisplayCurrency(stats.unpaidFee)}</p>
-                </div>
-                <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
-                    <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Acara Aktif</p>
-                    <p className="text-lg font-bold text-slate-800 mt-1">{stats.activeProjects}</p>
-                </div>
-                <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
-                    <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Selesai</p>
-                    <p className="text-lg font-bold text-slate-800 mt-1">{stats.completedProjects}</p>
-                </div>
+            <div className="grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
+                {[
+                    { label: 'Fee Diterima', value: formatDisplayCurrency(stats.paidFee), icon: DollarSignIcon, note: 'Total pembayaran lunas', tone: 'bg-emerald-50 text-emerald-700' },
+                    { label: 'Fee Pending', value: formatDisplayCurrency(stats.unpaidFee), icon: ClockIcon, note: 'Menunggu pembayaran', tone: 'bg-amber-50 text-amber-700' },
+                    { label: 'Acara Aktif', value: stats.activeProjects, icon: CalendarIcon, note: 'Dalam penugasan', tone: 'bg-sky-50 text-sky-700' },
+                    { label: 'Acara Selesai', value: stats.completedProjects, icon: CheckSquareIcon, note: 'Penugasan tuntas', tone: 'bg-violet-50 text-violet-700' },
+                ].map(stat => (
+                    <article key={stat.label} className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm transition-shadow hover:shadow-md">
+                        <div className="flex items-start justify-between gap-3">
+                            <div>
+                                <p className="text-xs font-medium uppercase tracking-[0.12em] text-slate-500">{stat.label}</p>
+                                <p className="mt-3 text-xl sm:text-2xl font-semibold tracking-tight text-slate-900 tabular-nums">{stat.value}</p>
+                                <p className="mt-1.5 text-xs text-slate-500">{stat.note}</p>
+                            </div>
+                            <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${stat.tone}`}>
+                                <stat.icon className="h-5 w-5" />
+                            </span>
+                        </div>
+                    </article>
+                ))}
             </div>
 
-            <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
-                <h3 className="text-lg font-bold text-slate-800 mb-4">
-                    Agenda Mendesak
-                </h3>
-                <div className="space-y-3">
-                    {agendaItems.length > 0 ? agendaItems.map((item, index) => (
-                        <div key={index} className="p-4 bg-slate-50 rounded-2xl flex justify-between items-center border border-slate-100">
-                            <div>
-                                <p className="font-semibold text-slate-800">{item.projectName}</p>
-                                <p className="text-sm text-slate-500">{formatDate(item.date)}</p>
-                            </div>
-                            <span className="text-xs font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-full">Akan Datang</span>
+            <section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm">
+                <div className="flex items-center justify-between gap-4 border-b border-slate-100 px-5 py-5 sm:px-6">
+                    <div className="flex items-center gap-3">
+                        <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-700">
+                            <CalendarIcon className="h-5 w-5" />
+                        </span>
+                        <div>
+                            <h3 className="text-base font-semibold text-slate-900">Agenda Berikutnya</h3>
+                            <p className="mt-0.5 text-xs text-slate-500">Jadwal acara terdekat Anda</p>
                         </div>
-                    )) : <p className="text-center text-slate-400 py-8 text-sm">Tidak ada agenda mendesak.</p>}
+                    </div>
+                    <span className="hidden sm:inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
+                        {agendaItems.length} agenda
+                    </span>
                 </div>
-            </div>
+                <div className="p-4 sm:p-6">
+                    {agendaItems.length > 0 ? (
+                        <div className="space-y-3">
+                            {agendaItems.map((item, index) => (
+                                <div key={index} className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-slate-50/70 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+                                    <div className="flex min-w-0 items-center gap-4">
+                                        <div className="flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-xl bg-white text-slate-700 shadow-sm ring-1 ring-slate-200">
+                                            <span className="text-[10px] font-medium uppercase tracking-wide">{new Date(item.date).toLocaleDateString('id-ID', { month: 'short' })}</span>
+                                            <span className="text-lg font-semibold leading-none">{new Date(item.date).getDate()}</span>
+                                        </div>
+                                        <div className="min-w-0">
+                                            <p className="truncate font-semibold text-slate-900">{item.projectName}</p>
+                                            <p className="mt-1 text-sm text-slate-500">{formatDate(item.date)}</p>
+                                        </div>
+                                    </div>
+                                    <span className="inline-flex w-fit items-center gap-2 rounded-full bg-sky-50 px-3 py-1.5 text-xs font-medium text-sky-700 ring-1 ring-inset ring-sky-100">
+                                        <span className="h-1.5 w-1.5 rounded-full bg-sky-500" />
+                                        Akan Datang
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50/70 px-5 py-10 text-center">
+                            <span className="flex h-12 w-12 items-center justify-center rounded-full bg-white text-slate-400 shadow-sm ring-1 ring-slate-200">
+                                <CalendarIcon className="h-5 w-5" />
+                            </span>
+                            <p className="mt-4 text-sm font-medium text-slate-700">Belum ada agenda mendatang</p>
+                            <p className="mt-1 text-xs text-slate-500">Jadwal baru akan muncul di sini saat Anda mendapat penugasan.</p>
+                        </div>
+                    )}
+                </div>
+            </section>
         </div>
     );
 };
@@ -441,20 +510,20 @@ const ProjectsTab: React.FC<{ projects: Project[], clients: Client[], onProjectC
         const base = 'px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1';
         const colorById = {
             all: {
-                active: 'bg-slate-600 text-white border-slate-600 shadow-soft',
-                inactive: 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200',
+                active: 'bg-slate-900 text-white border-slate-900 shadow-sm',
+                inactive: 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100',
             },
             upcoming: {
-                active: 'bg-blue-600 text-white border-blue-600 shadow-soft',
-                inactive: 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100',
+                active: 'bg-sky-700 text-white border-sky-700 shadow-sm',
+                inactive: 'bg-sky-50 text-sky-700 border-sky-100 hover:bg-sky-100',
             },
             ongoing: {
-                active: 'bg-amber-600 text-white border-amber-600 shadow-soft',
-                inactive: 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100',
+                active: 'bg-amber-600 text-white border-amber-600 shadow-sm',
+                inactive: 'bg-amber-50 text-amber-700 border-amber-100 hover:bg-amber-100',
             },
             completed: {
-                active: 'bg-green-600 text-white border-green-600 shadow-soft',
-                inactive: 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100',
+                active: 'bg-emerald-700 text-white border-emerald-700 shadow-sm',
+                inactive: 'bg-emerald-50 text-emerald-700 border-emerald-100 hover:bg-emerald-100',
             },
         } as const;
         const cls = filter === id ? colorById[id].active : colorById[id].inactive;
@@ -470,8 +539,8 @@ const ProjectsTab: React.FC<{ projects: Project[], clients: Client[], onProjectC
     };
 
     return (
-        <div className="space-y-2.5">
-            <div className="flex flex-wrap items-center gap-1.5 bg-white/95 backdrop-blur-xl border border-slate-200 p-2.5 rounded-xl shadow-sm">
+        <div className="space-y-3">
+            <div className="freelancer-project-filters flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200/80 bg-white p-3 shadow-sm">
                 <FilterButton id="all" label="Semua" count={counts.all} />
                 <FilterButton id="upcoming" label="Akan Datang" count={counts.upcoming} />
                 <FilterButton id="ongoing" label="Berjalan" count={counts.ongoing} />
@@ -483,43 +552,86 @@ const ProjectsTab: React.FC<{ projects: Project[], clients: Client[], onProjectC
                 const projectClient = clients.find(client => client.id === p.clientId);
                 const { isUpcoming, isOngoing, isCompleted } = classify(p);
                 const statusBadge = isCompleted
-                    ? { text: 'Selesai', cls: 'bg-green-100 text-green-800' }
+                    ? { text: 'Selesai', cls: 'bg-emerald-50 text-emerald-700 ring-emerald-100' }
                     : isUpcoming
-                        ? { text: 'Akan Datang', cls: 'bg-blue-100 text-blue-800' }
-                        : { text: 'Berjalan', cls: 'bg-yellow-100 text-yellow-800' };
+                        ? { text: 'Akan Datang', cls: 'bg-sky-50 text-sky-700 ring-sky-100' }
+                        : { text: 'Berjalan', cls: 'bg-amber-50 text-amber-700 ring-amber-100' };
                 return (
-                    <div key={p.id} onClick={() => onProjectClick(p)} className="h-fit p-2.5 sm:p-3 bg-white/95 backdrop-blur-xl rounded-xl border border-slate-200 cursor-pointer hover:border-blue-500 flex justify-between items-center gap-2 transition-all duration-200 hover:shadow-md widget-animate" style={{ animationDelay: `${index * 80}ms` }}>
+                    <button type="button" key={p.id} onClick={() => onProjectClick(p)} className="freelancer-project-card h-fit w-full p-3 sm:p-4 bg-white rounded-2xl border border-slate-200/80 text-left hover:border-slate-400 flex justify-between items-center gap-3 transition-all duration-200 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 widget-animate" style={{ animationDelay: `${index * 80}ms` }}>
                         <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                            <div className="w-8 h-8 rounded-full overflow-hidden shrink-0 bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-600">
+                            <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0 bg-slate-100 flex items-center justify-center text-sm font-medium text-slate-600">
                                 {projectClient?.avatarUrl ? <img src={projectClient.avatarUrl} alt={`${p.clientName} avatar`} className="w-full h-full object-cover" /> : (p.clientName || 'K').charAt(0).toUpperCase()}
                             </div>
                             <div className="min-w-0 flex-1">
-                                <div className="flex items-center justify-between gap-2">
+                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                                     <h3 className="font-semibold text-sm sm:text-base text-public-text-primary leading-tight truncate">{p.projectName}</h3>
                                     <div className="flex items-center gap-1.5 shrink-0">
                                         {assignmentDetails?.subJob && (
-                                            <span className="text-[10px] font-semibold text-public-accent bg-public-accent/10 px-1.5 py-0.5 rounded-md inline-block leading-none">{assignmentDetails.subJob}</span>
+                                            <span className="text-[10px] font-medium text-slate-600 bg-slate-100 px-2 py-1 rounded-md inline-block leading-none">{assignmentDetails.subJob}</span>
                                         )}
-                                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full leading-none ${statusBadge.cls}`}>{statusBadge.text}</span>
+                                        <span className={`text-[10px] font-medium px-2.5 py-1 rounded-full leading-none ring-1 ring-inset ${statusBadge.cls}`}>{statusBadge.text}</span>
                                     </div>
                                 </div>
-                                <p className="text-xs text-public-text-secondary leading-tight mt-0.5 truncate">{p.clientName} • {formatDate(p.date)}</p>
+                                <p className="text-xs text-public-text-secondary leading-tight mt-1 truncate">{p.clientName} • {formatDate(p.date)}</p>
                             </div>
                         </div>
-                    </div>
+                    </button>
                 );
             })}
 
-            {filtered.length === 0 && <div className="bg-white/95 backdrop-blur-xl p-6 rounded-2xl border border-slate-200 shadow-sm text-center widget-animate"><p className="text-slate-500 py-2 text-xs sm:text-sm">Tidak ada Acara Pernikahan pada kategori ini.</p></div>}
+            {filtered.length === 0 && <div className="bg-white p-8 rounded-2xl border border-slate-200/80 shadow-sm text-center widget-animate"><span className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-slate-100 text-slate-500"><CalendarIcon className="h-5 w-5" /></span><p className="mt-3 text-sm font-medium text-slate-700">Tidak ada acara pada kategori ini</p><p className="mt-1 text-xs text-slate-500">Coba pilih filter yang lain.</p></div>}
         </div>
     );
 };
 
 const PaymentsTab: React.FC<{ member: TeamMember, projects: Project[], teamProjectPayments: TeamProjectPayment[], teamPaymentRecords: TeamPaymentRecord[], onSlipView: (record: TeamPaymentRecord) => void }> = ({ member, projects, teamProjectPayments, teamPaymentRecords, onSlipView }) => (
-    <div className="bg-white/95 backdrop-blur-xl p-4 sm:p-6 rounded-3xl shadow-xl border border-slate-200 widget-animate">
-        <h2 className="text-xl font-bold text-slate-800 mb-4">Riwayat Pembayaran</h2>
-        <div className="overflow-x-auto"><table className="w-full text-sm">
-            <thead className="bg-gradient-to-r from-blue-50 to-cyan-50"><tr><th className="p-3 text-center font-semibold text-slate-700 w-12">No</th><th className="p-3 text-left font-semibold text-slate-700">Acara Pernikahan</th><th className="p-3 text-left font-semibold text-slate-700">Tanggal</th><th className="p-3 text-right font-semibold text-slate-700">Fee</th><th className="p-3 text-center font-semibold text-slate-700">Status &amp; Aksi</th></tr></thead>
+    <section className="freelancer-payments overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm widget-animate">
+        <div className="border-b border-slate-100 px-5 py-5 sm:px-6">
+            <h2 className="text-base font-semibold text-slate-900">Riwayat Pembayaran</h2>
+            <p className="mt-1 text-xs text-slate-500">Ringkasan fee dari penugasan Anda</p>
+        </div>
+        <div className="freelancer-payment-cards hidden p-3">
+            {teamProjectPayments.filter(p => p.teamMemberId === member.id).map(p => {
+                const isPaid = p.status === 'Paid';
+                const paymentRecord = isPaid ? teamPaymentRecords.find(rec => rec.projectPaymentIds.includes(p.id)) : null;
+                return (
+                    <article key={p.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                        <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                                <p className="text-sm font-semibold text-slate-900 break-words">
+                                    {projects.find(proj => proj.id === p.projectId)?.projectName || 'N/A'}
+                                </p>
+                                <p className="mt-1 text-xs text-slate-500">{formatDate(p.date)}</p>
+                            </div>
+                            <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${isPaid ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
+                                {isPaid ? 'Lunas' : 'Belum Lunas'}
+                            </span>
+                        </div>
+                        <div className="mt-3 flex items-center justify-between gap-3 border-t border-slate-100 pt-3">
+                            <span className="text-xs text-slate-500">Fee</span>
+                            <span className="text-sm font-semibold text-slate-900">{formatDisplayCurrency(p.fee)}</span>
+                        </div>
+                        {paymentRecord && (
+                            <button
+                                type="button"
+                                onClick={() => onSlipView(paymentRecord)}
+                                className="mt-3 inline-flex min-h-10 w-full items-center justify-center rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                            >
+                                Lihat slip pembayaran
+                            </button>
+                        )}
+                    </article>
+                );
+            })}
+            {teamProjectPayments.filter(p => p.teamMemberId === member.id).length === 0 && (
+                <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
+                    Belum ada riwayat pembayaran.
+                </p>
+            )}
+        </div>
+        <div className="overflow-x-auto">
+        <table className="freelancer-payment-table w-full min-w-[680px] text-sm">
+            <thead className="bg-slate-50"><tr><th className="p-3 text-center font-medium text-slate-500 w-12">No</th><th className="p-3 text-left font-medium text-slate-500">Acara Pernikahan</th><th className="p-3 text-left font-medium text-slate-500">Tanggal</th><th className="p-3 text-right font-medium text-slate-500">Fee</th><th className="p-3 text-center font-medium text-slate-500">Status &amp; Aksi</th></tr></thead>
             <tbody className="divide-y divide-slate-200">
                 {teamProjectPayments.filter(p => p.teamMemberId === member.id).map((p, index) => {
                     const isPaid = p.status === 'Paid';
@@ -531,52 +643,155 @@ const PaymentsTab: React.FC<{ member: TeamMember, projects: Project[], teamProje
                             <td className="p-3 text-public-text-secondary">{formatDate(p.date)}</td>
                             <td className="p-3 text-right font-medium text-public-text-primary">{formatDisplayCurrency(p.fee)}</td>
                             <td className="p-3 text-center space-x-2">
-                                <span className={`px-2 py-1 text-xs font-semibold rounded-full ${p.status === 'Paid' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>{p.status === 'Paid' ? 'Lunas' : 'Belum Lunas'}</span>
+                                <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${p.status === 'Paid' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>{p.status === 'Paid' ? 'Lunas' : 'Belum Lunas'}</span>
                                 {paymentRecord && (
-                                    <button onClick={() => onSlipView(paymentRecord)} className="text-xs font-semibold text-public-accent hover:underline">Lihat Slip</button>
+                                    <button onClick={() => onSlipView(paymentRecord)} className="text-xs font-medium text-slate-700 hover:text-slate-950 hover:underline">Lihat Slip</button>
                                 )}
                             </td>
                         </tr>
                     )
                 })}
             </tbody>
-        </table></div>
-    </div>
+        </table>
+        </div>
+    </section>
 );
 
 const PerformanceTab: React.FC<{ member: TeamMember }> = ({ member }) => (
-    <div className="space-y-6">
-        <div className="bg-gradient-to-br from-blue-500 to-cyan-500 p-6 rounded-3xl shadow-xl border border-blue-300 text-center widget-animate" style={{ animationDelay: '100ms' }}>
-            <h3 className="text-lg font-bold text-white mb-2">Peringkat Kinerja</h3>
-            <div className="flex justify-center items-center gap-2"><p className="text-3xl font-bold text-white">{member.rating.toFixed(1)} / 5.0</p></div>
-        </div>
-        <div className="bg-white/95 backdrop-blur-xl p-6 rounded-3xl shadow-xl border border-slate-200 widget-animate" style={{ animationDelay: '200ms' }}>
-            <h3 className="text-xl font-bold text-slate-800 mb-4">Catatan Kinerja dari Admin</h3>
-            <div className="space-y-3 max-h-80 overflow-y-auto pr-2">
-                {member.performanceNotes.map((note, index) => (<div key={note.id} className={`p-4 rounded-lg border-l-4 widget-animate ${note.type === PerformanceNoteType.PRAISE ? 'border-green-400 bg-green-500/5' : 'border-yellow-400 bg-yellow-500/5'}`} style={{ animationDelay: `${300 + index * 100}ms` }}>
-                    <p className="text-sm text-public-text-primary italic">"{note.note}"</p>
-                    <p className="text-right text-xs text-public-text-secondary mt-2">- {formatDate(note.date)}</p>
-                </div>))}
-                {member.performanceNotes.length === 0 && <p className="text-center text-public-text-secondary py-8">Belum ada catatan kinerja.</p>}
+    <div className="freelancer-performance space-y-5">
+        <div className="freelancer-performance-rating overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-6 sm:p-8 shadow-sm widget-animate" style={{ animationDelay: '100ms' }}>
+            <div className="flex flex-col items-center justify-between gap-5 sm:flex-row">
+                <div className="text-center sm:text-left">
+                    <p className="text-xs font-medium uppercase tracking-[0.15em] text-slate-500">Ringkasan performa</p>
+                    <h3 className="mt-2 text-lg font-semibold text-slate-900">Peringkat Kinerja</h3>
+                    <p className="mt-1 text-sm text-slate-500">Penilaian dari perjalanan kerja Anda</p>
+                </div>
+                <div className="flex items-center gap-3 rounded-2xl bg-slate-50 px-5 py-3 ring-1 ring-inset ring-slate-200">
+                    <StarIcon className="h-6 w-6 text-amber-500" />
+                    <p className="text-3xl font-semibold tracking-tight text-slate-900">{member.rating.toFixed(1)} <span className="text-base font-medium text-slate-400">/ 5.0</span></p>
+                </div>
             </div>
         </div>
+        <section className="freelancer-performance-notes rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-sm widget-animate" style={{ animationDelay: '200ms' }}>
+            <h3 className="text-base font-semibold text-slate-900">Catatan Kinerja dari Admin</h3>
+            <p className="mt-1 text-xs text-slate-500">Masukan dan apresiasi untuk Anda</p>
+            <div className="mt-5 space-y-3 max-h-80 overflow-y-auto pr-1">
+                {member.performanceNotes.map((note, index) => (<div key={note.id} className={`p-4 rounded-xl border widget-animate ${note.type === PerformanceNoteType.PRAISE ? 'border-emerald-100 bg-emerald-50/60' : 'border-amber-100 bg-amber-50/60'}`} style={{ animationDelay: `${300 + index * 100}ms` }}>
+                    <p className="text-sm leading-relaxed text-slate-700">"{note.note}"</p>
+                    <p className="text-right text-xs text-slate-500 mt-3">{formatDate(note.date)}</p>
+                </div>))}
+                {member.performanceNotes.length === 0 && <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">Belum ada catatan kinerja.</div>}
+            </div>
+        </section>
     </div>
 );
 const ProjectDetailModal: React.FC<{ project: Project, member: TeamMember, showNotification: any, onClose: any }> = ({ project, member, showNotification, onClose }) => {
     const assignmentDetails = project.team.find(t => t.memberId === member.id);
+    const projectLinks = [
+        { label: 'Brief & moodboard', description: 'Referensi internal acara', url: project.driveLink },
+        { label: 'File dari pengantin', description: 'Dokumen yang dibagikan klien', url: project.clientDriveLink },
+        { label: 'File hasil akhir', description: 'Materi final untuk pengantin', url: project.finalDriveLink },
+    ];
 
     return (
-        <div className="space-y-6">
-            <div><h4 className="font-semibold text-gradient mb-2">Informasi Umum</h4><div className="text-sm space-y-2 p-3 bg-public-bg rounded-lg">
-                {assignmentDetails && <p><strong>Peran Anda:</strong> {assignmentDetails.role} {assignmentDetails.subJob && <span className="text-public-text-secondary">({assignmentDetails.subJob})</span>}</p>}
-                <p><strong>Pengantin:</strong> {project.clientName}</p>
-                <p><strong>Lokasi:</strong> {project.location}</p>
-                <p><strong>Waktu:</strong> {project.startTime || 'N/A'} - {project.endTime || 'N/A'}</p>
-                <p><strong>Link Moodboard/Brief (Internal):</strong> {project.driveLink ? <a href={project.driveLink} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">Buka Tautan</a> : 'N/A'}</p>
-                <p><strong>Link File dari Pengantin:</strong> {project.clientDriveLink ? <a href={project.clientDriveLink} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">Buka Tautan</a> : 'N/A'}</p>
-                <p><strong>Link File Jadi (untuk Pengantin):</strong> {project.finalDriveLink ? <a href={project.finalDriveLink} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">Buka Tautan</a> : 'Belum tersedia'}</p>
-                {project.notes && <p className="whitespace-pre-wrap mt-2 pt-2 border-t border-public-border"><strong>Catatan:</strong> {project.notes}</p>}
-            </div></div>
+        <div className="freelancer-project-detail space-y-5 sm:space-y-6">
+            <section className="relative overflow-hidden rounded-2xl bg-slate-900 p-5 text-white sm:p-6">
+                <div className="absolute -right-8 -top-14 h-40 w-40 rounded-full border border-white/10" />
+                <div className="absolute -right-1 -top-8 h-28 w-28 rounded-full border border-white/10" />
+                <div className="relative">
+                    <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-slate-300">Informasi acara</p>
+                    <h2 className="mt-2 text-xl font-semibold tracking-tight sm:text-2xl">{project.projectName}</h2>
+                    <p className="mt-1 text-sm text-slate-300">{project.clientName}</p>
+                    {assignmentDetails && (
+                        <div className="mt-4 flex flex-wrap gap-2">
+                            <span className="inline-flex items-center rounded-full bg-white/10 px-3 py-1.5 text-xs font-medium text-white ring-1 ring-inset ring-white/15">
+                                {assignmentDetails.role}
+                            </span>
+                            {assignmentDetails.subJob && (
+                                <span className="inline-flex items-center rounded-full bg-white/10 px-3 py-1.5 text-xs font-medium text-white ring-1 ring-inset ring-white/15">
+                                    {assignmentDetails.subJob}
+                                </span>
+                            )}
+                        </div>
+                    )}
+                </div>
+            </section>
+
+            <section>
+                <div className="mb-3">
+                    <h3 className="text-sm font-semibold text-slate-900">Jadwal & lokasi</h3>
+                    <p className="mt-0.5 text-xs text-slate-500">Informasi utama penugasan Anda</p>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="flex items-start gap-3 rounded-xl border border-slate-200 bg-white p-4">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+                            <CalendarIcon className="h-4 w-4" />
+                        </span>
+                        <div className="min-w-0">
+                            <p className="text-xs text-slate-500">Tanggal acara</p>
+                            <p className="mt-1 text-sm font-medium text-slate-900">{formatDate(project.date)}</p>
+                        </div>
+                    </div>
+                    <div className="flex items-start gap-3 rounded-xl border border-slate-200 bg-white p-4">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+                            <MapPinIcon className="h-4 w-4" />
+                        </span>
+                        <div className="min-w-0">
+                            <p className="text-xs text-slate-500">Lokasi</p>
+                            <p className="mt-1 text-sm font-medium text-slate-900">{project.location || 'Belum ditentukan'}</p>
+                        </div>
+                    </div>
+                    <div className="flex items-start gap-3 rounded-xl border border-slate-200 bg-white p-4 sm:col-span-2">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+                            <ClockIcon className="h-4 w-4" />
+                        </span>
+                        <div className="min-w-0">
+                            <p className="text-xs text-slate-500">Waktu kerja</p>
+                            <p className="mt-1 text-sm font-medium text-slate-900">
+                                {project.startTime || 'Belum ditentukan'} <span className="px-1 text-slate-400">—</span> {project.endTime || 'Belum ditentukan'}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section>
+                <div className="mb-3">
+                    <h3 className="text-sm font-semibold text-slate-900">Dokumen & tautan</h3>
+                    <p className="mt-0.5 text-xs text-slate-500">Materi yang terkait dengan acara ini</p>
+                </div>
+                <div className="grid gap-2 sm:grid-cols-3">
+                    {projectLinks.map(link => (
+                        <div key={link.label} className={`rounded-xl border p-3.5 ${link.url ? 'border-slate-200 bg-white' : 'border-dashed border-slate-200 bg-slate-50/70'}`}>
+                            <p className="text-sm font-medium text-slate-800">{link.label}</p>
+                            <p className="mt-1 text-xs leading-relaxed text-slate-500">{link.description}</p>
+                            {link.url ? (
+                                <a
+                                    href={link.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-slate-800 hover:text-slate-500 hover:underline"
+                                >
+                                    <FileTextIcon className="h-3.5 w-3.5" />
+                                    Buka tautan
+                                </a>
+                            ) : (
+                                <p className="mt-3 text-xs text-slate-400">Belum tersedia</p>
+                            )}
+                        </div>
+                    ))}
+                </div>
+            </section>
+
+            {project.notes && (
+                <section className="rounded-xl border border-slate-200 bg-slate-50/70 p-4 sm:p-5">
+                    <div className="flex items-center gap-2">
+                        <FileTextIcon className="h-4 w-4 text-slate-500" />
+                        <h3 className="text-sm font-semibold text-slate-900">Catatan acara</h3>
+                    </div>
+                    <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-slate-600">{project.notes}</p>
+                </section>
+            )}
         </div>
     );
 }

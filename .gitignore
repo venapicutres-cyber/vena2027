@@ -69,3 +69,5 @@ backups/
 !supabase/migrations/20261006101500_enable_app_realtime_tables.sql
 !supabase/migrations/20261006175600_bio_link_pages.sql
 !supabase/migrations/20261008090000_allow_projects_without_event_date.sql
+!supabase/migrations/20261008140000_add_vendor_profile_page_banner.sql
+!supabase/migrations/20261008150000_grant_bio_link_page_access.sql

@@ -168,6 +168,7 @@ const VendorProfilePage: React.FC = () => {
   const [newVideo, setNewVideo] = useState({ title: '', url: '' });
   const [newPartner, setNewPartner] = useState({ name: '', logo_url: '' });
   const [uploadingPartnerLogo, setUploadingPartnerLogo] = useState(false);
+  const [uploadingBannerImage, setUploadingBannerImage] = useState(false);
   const [newFaq, setNewFaq] = useState({ question: '', answer: '' });
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -222,6 +223,22 @@ const VendorProfilePage: React.FC = () => {
       setMessage('Gagal menyimpan profil');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleBannerImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const input = e.currentTarget;
+    const file = input.files?.[0];
+    if (!file) return;
+    try {
+      setUploadingBannerImage(true);
+      const url = await uploadVendorImage(file, 'vendor/page-banner');
+      setProfile(prev => ({ ...prev, page_banner_image_url: url }));
+    } catch {
+      alert('Gagal upload gambar banner');
+    } finally {
+      setUploadingBannerImage(false);
+      input.value = '';
     }
   };
 
@@ -542,6 +559,87 @@ const VendorProfilePage: React.FC = () => {
             <p className="text-[11px] text-brand-text-secondary mt-2">
               Gambar-gambar ini akan menjadi latar belakang slider bergantian di bagian paling atas halaman profil publik.
             </p>
+          </div>
+        </div>
+      </div>
+
+      {/* ─── 2. Page Banner ─── */}
+      <div className="bg-brand-surface border border-brand-border rounded-2xl p-6 space-y-6">
+        <div className="border-b border-brand-border pb-4">
+          <h2 className="text-lg font-bold text-brand-text-primary">Banner Halaman</h2>
+          <p className="text-sm text-brand-text-secondary mt-1">
+            Buat sorotan visual di antara perkenalan dan portofolio pada halaman profil publik.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-semibold text-brand-text-primary mb-1.5">Judul Banner</label>
+              <input
+                type="text"
+                value={profile.page_banner_title || ''}
+                onChange={e => setProfile(prev => ({ ...prev, page_banner_title: e.target.value }))}
+                className="w-full px-4 py-3 rounded-xl bg-brand-input border border-brand-border focus:ring-2 focus:ring-brand-accent focus:border-transparent outline-none"
+                placeholder="Contoh: Cerita indah, dalam setiap bingkai"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-brand-text-primary mb-1.5">Deskripsi Banner</label>
+              <textarea
+                value={profile.page_banner_subtitle || ''}
+                onChange={e => setProfile(prev => ({ ...prev, page_banner_subtitle: e.target.value }))}
+                className="w-full px-4 py-3 rounded-xl bg-brand-input border border-brand-border focus:ring-2 focus:ring-brand-accent focus:border-transparent outline-none min-h-[110px]"
+                placeholder="Tambahkan kalimat singkat tentang layanan atau gaya karya Anda."
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-brand-text-primary mb-1.5">Gambar Banner</label>
+            {profile.page_banner_image_url ? (
+              <div className="relative aspect-[16/9] rounded-xl overflow-hidden border border-brand-border bg-brand-input">
+                <img src={profile.page_banner_image_url} alt="Pratinjau banner halaman" className="w-full h-full object-cover" />
+                <div className="absolute inset-0 bg-black/35 flex items-end justify-between p-3">
+                  <label className="cursor-pointer px-3 py-2 bg-white text-gray-900 text-sm font-semibold rounded-lg hover:bg-gray-100 transition-colors">
+                    {uploadingBannerImage ? 'Mengunggah...' : 'Ganti gambar'}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      disabled={uploadingBannerImage}
+                      onChange={handleBannerImageUpload}
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setProfile(prev => ({ ...prev, page_banner_image_url: '' }))}
+                    className="px-3 py-2 bg-white text-gray-900 text-sm font-semibold rounded-lg hover:bg-gray-100 transition-colors"
+                  >
+                    Hapus
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <label className="flex flex-col items-center justify-center aspect-[16/9] border-2 border-dashed border-brand-border rounded-xl cursor-pointer hover:bg-brand-input/50 transition-colors text-center p-4">
+                {uploadingBannerImage ? (
+                  <div className="w-5 h-5 border-2 border-brand-accent border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <>
+                    <UploadCloudIcon className="w-7 h-7 text-brand-text-secondary mb-2 opacity-60" />
+                    <span className="text-sm font-semibold text-brand-text-primary">Unggah gambar banner</span>
+                    <span className="text-xs text-brand-text-secondary mt-1">Rasio lebar 16:9 direkomendasikan</span>
+                  </>
+                )}
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  disabled={uploadingBannerImage}
+                  onChange={handleBannerImageUpload}
+                />
+              </label>
+            )}
           </div>
         </div>
       </div>

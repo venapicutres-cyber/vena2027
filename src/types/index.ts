@@ -677,6 +677,9 @@ export interface VendorProfile {
   hero_subtitle: string;
   hero_image_url?: string;
   hero_images?: string[];
+  page_banner_title?: string;
+  page_banner_subtitle?: string;
+  page_banner_image_url?: string;
   whatsapp_number: string;
   info_images: string[]; // URLs of info images
   faqs?: VendorProfileFaq[];

@@ -47,9 +47,17 @@ export async function saveBioLinkPage(
     : await supabase.from('bio_link_pages').insert(input).select().single();
 
   if (result.error) {
-    console.error('[bioLinks] Failed to save link page:', result.error);
+    console.error('[bioLinks] Failed to save link page:', {
+      code: result.error.code,
+      message: result.error.message,
+      details: result.error.details,
+      hint: result.error.hint,
+    });
     if (result.error.code === '23505') {
       throw new Error('Link publik ini sudah digunakan. Silakan pilih nama link yang lain.');
+    }
+    if (result.error.code === '42501') {
+      throw new Error('Akses ditolak Supabase. Pastikan sesi login masih aktif dan role akun Anda Admin, lalu jalankan migrasi bio link terbaru.');
     }
     throw new Error('Gagal menyimpan halaman link publik. Periksa koneksi dan kebijakan tabel Supabase.');
   }
