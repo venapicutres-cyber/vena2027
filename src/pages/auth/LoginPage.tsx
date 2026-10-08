@@ -76,11 +76,6 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess, users }) => {
 
     return (
         <div className="login-page flex items-center justify-center min-h-screen bg-white p-4 relative overflow-hidden">
-            {/* Background Image */}
-            <div className="absolute inset-0 z-0 opacity-40 pointer-events-none">
-                <img src="/assets/images/backgrounds/login-bg.svg" alt="" width="1920" height="1080" loading="lazy" decoding="async" className="w-full h-full object-cover" />
-            </div>
-
             <div className="w-full max-w-sm mx-auto relative z-10">
                 <div className="login-card bg-white/80 backdrop-blur-xl p-8 rounded-2xl shadow-xl border border-white/50">
                     <div className="login-header text-center mb-8">

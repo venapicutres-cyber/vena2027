@@ -208,7 +208,7 @@ const ClientForm: React.FC<ClientFormProps> = ({
                             onChange={handleFormChange}
                             className="w-full px-4 py-3 rounded-xl border border-[#EAEFF4] bg-white text-[#2A3547] focus:outline-none focus:ring-2 focus:ring-[#5D87FF] focus:border-transparent transition-all"
                             placeholder="Masukkan nama pengantin"
-                            required
+                            required={!!formData.date}
                         />
                     </div>
                     <div className="space-y-2">
@@ -292,7 +292,7 @@ const ClientForm: React.FC<ClientFormProps> = ({
                                 value={formData.projectType}
                                 onChange={handleFormChange}
                                 className="w-full px-4 py-3 rounded-xl border border-[#EAEFF4] bg-white text-[#2A3547] focus:outline-none focus:ring-2 focus:ring-[#5D87FF] focus:border-transparent transition-all"
-                                required={modalMode === 'add' || !!formData.projectId}
+                                required
                             >
                                 <option value="" disabled>Pilih Jenis...</option>
                                 {userProfile.projectTypes?.map(pt => <option key={pt} value={pt}>{pt}</option>)}
@@ -302,7 +302,7 @@ const ClientForm: React.FC<ClientFormProps> = ({
                             </select>
                         </div>
                         <div className="space-y-2">
-                            <label htmlFor="date" className="block text-xs text-[#5A6A85]">Tanggal Acara</label>
+                            <label htmlFor="date" className="block text-xs text-[#5A6A85]">Tanggal Acara (Opsional)</label>
                             <input
                                 type="date"
                                 id="date"
@@ -311,6 +311,11 @@ const ClientForm: React.FC<ClientFormProps> = ({
                                 onChange={handleFormChange}
                                 className="w-full px-4 py-3 rounded-xl border border-[#EAEFF4] bg-white text-[#2A3547] focus:outline-none focus:ring-2 focus:ring-[#5D87FF] focus:border-transparent transition-all"
                             />
+                            {!formData.date && (
+                                <p className="text-[10px] text-[#5A6A85]">
+                                    Jika belum tahu tanggalnya, acara tetap tersimpan dan tanggal bisa ditambahkan nanti.
+                                </p>
+                            )}
                         </div>
                     </div>
                     <div className="space-y-2">
@@ -388,7 +393,7 @@ const ClientForm: React.FC<ClientFormProps> = ({
                             value={formData.packageId}
                             onChange={handleFormChange}
                             className="w-full px-4 py-3 rounded-xl border border-[#EAEFF4] bg-white text-[#2A3547] focus:outline-none focus:ring-2 focus:ring-[#5D87FF] focus:border-transparent transition-all"
-                            required={modalMode === 'add' || !!formData.projectId}
+                            required
                         >
                             <option value="">Pilih Package...</option>
                             {visiblePackages.map(p => (

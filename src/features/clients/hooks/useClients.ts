@@ -86,9 +86,11 @@ export const useClients = (
             const to = dateTo ? new Date(dateTo) : null;
             if (from) from.setHours(0, 0, 0, 0);
             if (to) to.setHours(23, 59, 59, 999);
-            const dateMatchRange = (!from && !to) || client.projects.some(p => {
-                const projectDate = new Date(p.date);
-                return (!from || projectDate >= from) && (!to || projectDate <= to);
+            const dateMatchRange = (!from && !to) || client.projects.some(project => {
+                const projectDate = project.date ? new Date(project.date) : null;
+                const hasValidDate = projectDate && !Number.isNaN(projectDate.getTime());
+                if (project.bookingStatus && !hasValidDate) return true;
+                return !!hasValidDate && (!from || projectDate >= from) && (!to || projectDate <= to);
             }) || (() => {
                 // Jika tidak ada project, filter berdasarkan tanggal join client
                 const clientJoinDate = new Date(client.since);

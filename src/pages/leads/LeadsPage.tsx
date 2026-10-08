@@ -160,11 +160,11 @@ const LeadForm: React.FC<LeadFormProps> = ({ formData, handleFormChange, handleS
             </div>
 
             <div>
-                <h5 className="text-sm font-semibold text-brand-text-light mb-3">Tanggal Acara</h5>
+                <h5 className="text-sm font-semibold text-brand-text-light mb-3">Tanggal Acara <span className="text-brand-text-secondary font-normal">(Opsional)</span></h5>
                 <div className="input-group">
-                    <input type="date" id="eventDate" name="eventDate" value={formData.eventDate || ''} onChange={handleFormChange} className="input-field" placeholder=" " />
+                    <input type="date" id="eventDate" name="eventDate" value={formData.eventDate || ''} onChange={handleFormChange} className="input-field" placeholder=" " aria-label="Tanggal acara (opsional)" />
                     <label htmlFor="eventDate" className="input-label">Tanggal Acara Pernikahan</label>
-                    <p className="hidden sm:block text-xs text-brand-text-secondary mt-1">Rencana tanggal acara pernikahan Calon Pengantin</p>
+                    <p className="hidden sm:block text-xs text-brand-text-secondary mt-1">Bisa dikosongkan jika belum ada tanggal pasti dari client.</p>
                 </div>
             </div>
 

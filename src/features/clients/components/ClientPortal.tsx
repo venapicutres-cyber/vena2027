@@ -25,7 +25,7 @@ import InvoiceDocument from '../../finance/components/InvoiceDocument';
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 const formatDate = (d: string) =>
-  new Date(d).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' });
+  d ? new Date(d).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' }) : 'Belum ditentukan';
 
 const formatCurrency = (amount: number, opts?: { showDecimals?: boolean; compact?: boolean }) => {
   const { showDecimals = true, compact = false } = opts || {};

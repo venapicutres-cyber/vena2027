@@ -56,7 +56,7 @@ export const initialFormState = {
     projectName: '',
     projectType: '',
     location: '',
-    date: new Date().toISOString().split('T')[0],
+    date: '',
     packageId: '',
     selectedAddOnIds: [] as string[],
     customItems: [] as CustomFormItem[],

@@ -5,7 +5,7 @@ import { ClientWithSummary } from '../hooks/useClients';
 import { formatCurrency, getPaymentStatusClass } from '../utils/clientHelpers';
 import { MobileExpandableExtra } from '../../../components/ui/MobileProgressiveDisclosure';
 
-export type ClientTabType = 'active' | 'inactive' | 'all';
+export type ClientTabType = 'active' | 'inactive' | 'all' | 'no-date';
 
 interface ClientTableViewProps {
     clientTab: ClientTabType;
@@ -28,23 +28,32 @@ export const ClientTableView: React.FC<ClientTableViewProps> = ({
 }) => {
     const activeClients = filteredClientData.filter(c => c.status === ClientStatus.ACTIVE);
     const inactiveClients = filteredClientData.filter(c => c.status !== ClientStatus.ACTIVE);
+    const noDateClients = filteredClientData.filter(client => {
+        const mainProject = client.mostRecentProject ?? client.projects[0] ?? null;
+        if (!mainProject) return true;
+
+        const rawDate = typeof mainProject.date === 'string' ? mainProject.date.trim() : '';
+        return rawDate === '' || Number.isNaN(new Date(rawDate).getTime());
+    });
 
     const displayedClients =
         clientTab === 'active'
             ? activeClients
             : clientTab === 'inactive'
             ? inactiveClients
+            : clientTab === 'no-date'
+            ? noDateClients
             : filteredClientData;
 
     return (
         <div className="bg-white rounded-2xl shadow-[0_9px_17.5px_rgba(0,0,0,0.05)] border border-[#EAEFF4] overflow-hidden">
             <div className="p-4 border-b border-[#EAEFF4] flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white">
                 {/* Segmented View Switcher */}
-                <div className="flex items-center gap-1.5 p-1 bg-[#F4F6F9] rounded-xl border border-[#EAEFF4]">
+                <div className="flex max-w-full flex-nowrap items-center gap-1.5 overflow-x-auto p-1 bg-[#F4F6F9] rounded-xl border border-[#EAEFF4]">
                     <button
                         type="button"
                         onClick={() => setClientTab('active')}
-                        className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                        className={`shrink-0 whitespace-nowrap px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all ${
                             clientTab === 'active'
                                 ? 'bg-[#5D87FF] text-white shadow-xs'
                                 : 'text-[#5A6A85] hover:text-[#2A3547]'
@@ -55,7 +64,7 @@ export const ClientTableView: React.FC<ClientTableViewProps> = ({
                     <button
                         type="button"
                         onClick={() => setClientTab('inactive')}
-                        className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                        className={`shrink-0 whitespace-nowrap px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all ${
                             clientTab === 'inactive'
                                 ? 'bg-[#5D87FF] text-white shadow-xs'
                                 : 'text-[#5A6A85] hover:text-[#2A3547]'
@@ -65,8 +74,19 @@ export const ClientTableView: React.FC<ClientTableViewProps> = ({
                     </button>
                     <button
                         type="button"
+                        onClick={() => setClientTab('no-date')}
+                        className={`shrink-0 whitespace-nowrap px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                            clientTab === 'no-date'
+                                ? 'bg-[#5D87FF] text-white shadow-xs'
+                                : 'text-[#5A6A85] hover:text-[#2A3547]'
+                        }`}
+                    >
+                        Belum Ada Tanggal ({noDateClients.length})
+                    </button>
+                    <button
+                        type="button"
                         onClick={() => setClientTab('all')}
-                        className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                        className={`shrink-0 whitespace-nowrap px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all ${
                             clientTab === 'all'
                                 ? 'bg-[#5D87FF] text-white shadow-xs'
                                 : 'text-[#5A6A85] hover:text-[#2A3547]'

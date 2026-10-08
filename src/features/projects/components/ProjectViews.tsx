@@ -86,7 +86,7 @@ export const ProjectListView: React.FC<ProjectListViewProps> = ({
                                         <span className="min-w-0 truncate">{client?.name || p.clientName}</span>
                                     </div>
                                 </td>
-                                <td className="px-3 lg:px-6 py-2.5 text-[#5A6A85] font-medium whitespace-nowrap">{new Date(p.date).toLocaleDateString('id-ID', { year: 'numeric', month: 'short', day: 'numeric' })}</td>
+                                <td className="px-3 lg:px-6 py-2.5 text-[#5A6A85] font-medium whitespace-nowrap">{p.date ? new Date(p.date).toLocaleDateString('id-ID', { year: 'numeric', month: 'short', day: 'numeric' }) : 'Belum ditentukan'}</td>
                                 <td className="px-3 lg:px-6 py-2.5">
                                     <div className="flex items-center gap-2">
                                         <ProgressBar progress={getDisplayProgress(p, config)} status={p.status} config={config} />
@@ -171,7 +171,7 @@ export const ProjectKanbanView: React.FC<ProjectKanbanViewProps> = ({
                                                     </p>
                                                     <span className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-[#F4F7FC] px-1.5 py-1 text-[10px] font-semibold leading-none text-[#5A6A85]">
                                                         <CalendarDays className="h-3 w-3 text-[#7184A3]" />
-                                                        {new Date(p.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
+                                                        {p.date ? new Date(p.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) : 'Belum ditentukan'}
                                                     </span>
                                                 </div>
 

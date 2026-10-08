@@ -97,7 +97,7 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
                     <div className="flex flex-col items-end shrink-0 gap-0.5 text-[10px] sm:text-[11px] text-[#5A6A85]">
                         <div className="inline-flex items-center gap-1 font-medium leading-tight">
                             <CalendarIcon className="w-3 h-3 text-[#5D87FF] shrink-0" />
-                            <span>{new Date(project.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                            <span>{project.date ? new Date(project.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Belum ditentukan'}</span>
                         </div>
                         {isUrgent && daysUntil >= 0 && (
                             <div className="inline-flex items-center gap-0.5 text-[#FFAE1F] font-bold leading-none">

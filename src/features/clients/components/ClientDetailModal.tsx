@@ -634,7 +634,7 @@ const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
                         </h4>
                         <p className="text-[10px] text-brand-text-secondary mt-0.5">
                           PRJ-{p.id.slice(-6).toUpperCase()} &nbsp;•&nbsp;
-                          {new Date(p.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+                          {p.date ? new Date(p.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : 'Belum ditentukan'}
                         </p>
                       </div>
                     </div>

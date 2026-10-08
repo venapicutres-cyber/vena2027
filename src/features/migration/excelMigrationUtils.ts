@@ -126,10 +126,67 @@ export function generateExcelTemplate(type: MigrationDataType = 'all'): void {
 // Parse Raw Number or Currency
 export function parseRawNumber(val: any): number {
   if (val === null || val === undefined || val === '') return 0;
-  if (typeof val === 'number') return isNaN(val) ? 0 : val;
-  const str = String(val).replace(/[^\d.-]/g, '');
-  const num = parseFloat(str);
-  return isNaN(num) ? 0 : num;
+  if (typeof val === 'number') return Number.isFinite(val) ? val : 0;
+
+  const raw = String(val).trim();
+  if (!raw) return 0;
+
+  const normalized = raw.replace(/\s+/g, '').replace(/[^\d,\.\-]/g, '');
+  if (!normalized || normalized === '-' || normalized === '.' || normalized === ',') return 0;
+
+  let sign = '';
+  let digits = normalized;
+  if (digits.startsWith('-')) {
+    sign = '-';
+    digits = digits.slice(1);
+  } else if (digits.startsWith('+')) {
+    digits = digits.slice(1);
+  }
+
+  if (digits.includes(',') && digits.includes('.')) {
+    const lastComma = digits.lastIndexOf(',');
+    const lastDot = digits.lastIndexOf('.');
+    const decimalSeparator = lastComma > lastDot ? ',' : '.';
+    const thousandsSeparator = decimalSeparator === ',' ? '.' : ',';
+    const compacted = digits
+      .replace(new RegExp(`\\${thousandsSeparator}`, 'g'), '')
+      .replace(decimalSeparator, '.');
+    const num = Number(compacted);
+    return Number.isFinite(num) ? (sign ? -num : num) : 0;
+  }
+
+  if (digits.includes('.') && digits.split('.').length > 2) {
+    const num = Number(digits.replace(/\./g, ''));
+    return Number.isFinite(num) ? (sign ? -num : num) : 0;
+  }
+
+  if (digits.includes(',') && digits.split(',').length > 2) {
+    const num = Number(digits.replace(/,/g, ''));
+    return Number.isFinite(num) ? (sign ? -num : num) : 0;
+  }
+
+  if (digits.includes(',')) {
+    const parts = digits.split(',');
+    if (parts.length === 2 && parts[1].length <= 2 && parts[1].length > 0) {
+      const num = Number(`${parts[0]}.${parts[1]}`);
+      return Number.isFinite(num) ? (sign ? -num : num) : 0;
+    }
+    const num = Number(digits.replace(/,/g, ''));
+    return Number.isFinite(num) ? (sign ? -num : num) : 0;
+  }
+
+  if (digits.includes('.')) {
+    const parts = digits.split('.');
+    if (parts.length === 2 && parts[1].length <= 2 && parts[1].length > 0) {
+      const num = Number(digits);
+      return Number.isFinite(num) ? (sign ? -num : num) : 0;
+    }
+    const num = Number(digits.replace(/\./g, ''));
+    return Number.isFinite(num) ? (sign ? -num : num) : 0;
+  }
+
+  const num = Number(digits);
+  return Number.isFinite(num) ? (sign ? -num : num) : 0;
 }
 
 // Standardize Date String to YYYY-MM-DD
@@ -150,8 +207,8 @@ export function parseRawDate(val: any): string {
   // Check if already YYYY-MM-DD
   if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
 
-  // Check DD/MM/YYYY or DD-MM-YYYY
-  const ddmmyyyy = str.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
+  // Check DD/MM/YYYY, DD-MM-YYYY, or DD.MM.YYYY
+  const ddmmyyyy = str.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/);
   if (ddmmyyyy) {
     const day = ddmmyyyy[1].padStart(2, '0');
     const month = ddmmyyyy[2].padStart(2, '0');

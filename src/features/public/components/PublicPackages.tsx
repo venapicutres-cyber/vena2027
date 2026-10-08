@@ -61,7 +61,7 @@ const AddOnItem: React.FC<{ addOn: AddOn }> = ({ addOn }) => {
 };
 
 const initialForm = {
-    clientName: '', email: '', phone: '', instagram: '', date: new Date().toISOString().split('T')[0], location: '', transportCost: '', selectedAddOnIds: [] as string[], promoCode: '', dp: '', dpPaymentRef: '', durationSelection: '' as string, unitPrice: undefined as number | undefined
+    clientName: '', email: '', phone: '', instagram: '', date: '', location: '', transportCost: '', selectedAddOnIds: [] as string[], promoCode: '', dp: '', dpPaymentRef: '', durationSelection: '' as string, unitPrice: undefined as number | undefined
 };
 
 
@@ -801,7 +801,16 @@ const PublicPackages: React.FC<PublicPackagesProps> = ({ userProfile: initialUse
                                     <div className="input-group"><input type="email" id="email" name="email" value={formData.email} onChange={handleFormChange} className="input-field" placeholder=" " required /><label htmlFor="email" className="input-label">Email</label></div>
                                     <div className="input-group"><input type="tel" id="phone" name="phone" value={formData.phone} onChange={handleFormChange} className="input-field" placeholder=" " required /><label htmlFor="phone" className="input-label">Nomor WhatsApp</label></div>
                                     <div className="input-group"><input type="text" id="instagram" name="instagram" value={formData.instagram} onChange={handleFormChange} className="input-field" placeholder=" " /><label htmlFor="instagram" className="input-label">Instagram</label></div>
-                                    <div className="input-group"><input type="date" id="date" name="date" value={formData.date} onChange={handleFormChange} className="input-field" placeholder=" " /><label htmlFor="date" className="input-label">Tanggal Acara Pernikahan</label></div>
+                                    <div className="input-group">
+                                        <input type="date" id="date" name="date" value={formData.date} onChange={handleFormChange} className="input-field" placeholder=" " />
+                                        <label htmlFor="date" className="input-label">Tanggal Acara Pernikahan (Opsional)</label>
+                                        {!formData.date && <p className="text-[10px] text-brand-text-secondary">Kosongkan jika tanggal acara belum ditentukan.</p>}
+                                        {formData.date && (
+                                            <button type="button" onClick={() => setFormData(prev => ({ ...prev, date: '' }))} className="mt-1 text-xs font-semibold text-[#5D87FF] hover:underline">
+                                                Kosongkan tanggal
+                                            </button>
+                                        )}
+                                    </div>
                                     <div className="input-group"><input type="text" id="location" name="location" value={formData.location} onChange={handleFormChange} className="input-field" placeholder=" " /><label htmlFor="location" className="input-label">Alamat Acara Pernikahan</label></div>
                                     <h4 className="text-base font-semibold text-gradient border-b border-public-border pb-2 pt-4">Package & Pembayaran</h4>
                                     <div className="p-4 bg-public-bg rounded-lg space-y-3">

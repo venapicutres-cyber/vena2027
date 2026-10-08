@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { ChevronDown, Package as PackageIcon } from 'lucide-react';
 import { REGIONS } from '../../../types';
 import { Client, Project, Package, AddOn, Transaction, Profile, Card, FinancialPocket, ClientStatus, PaymentStatus, TransactionType, PromoCode, Lead, LeadStatus, ContactChannel, ClientType, PublicBookingFormProps, BookingStatus, ViewType } from '../../../types';
 import Modal from '../../../shared/ui/Modal';
@@ -22,12 +23,11 @@ const initialFormState = {
     instagram: '',
     projectType: '',
     location: '',
-    date: new Date().toISOString().split('T')[0],
+    date: '',
     packageId: '',
     selectedAddOnIds: [] as string[],
     promoCode: '',
     dp: '',
-    dpPaymentRef: '', // Client adds this for reference
     transportCost: '',
     durationSelection: '' as string,
     unitPrice: undefined as number | undefined,
@@ -67,6 +67,9 @@ const PublicBookingForm: React.FC<PublicBookingFormProps> = ({
     const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
     const [isLeadDataLoaded, setIsLeadDataLoaded] = useState(false);
     const [isPackagesLoading, setIsPackagesLoading] = useState(true);
+    const [isPackagePickerOpen, setIsPackagePickerOpen] = useState(false);
+    const packagePickerRef = useRef<HTMLDivElement>(null);
+    const packagePickerTriggerRef = useRef<HTMLButtonElement>(null);
 
     useEffect(() => {
         if (!paymentProof || !paymentProof.type.startsWith('image/')) {
@@ -78,6 +81,19 @@ const PublicBookingForm: React.FC<PublicBookingFormProps> = ({
         setPaymentProofPreviewUrl(previewUrl);
         return () => URL.revokeObjectURL(previewUrl);
     }, [paymentProof]);
+
+    useEffect(() => {
+        if (!isPackagePickerOpen) return;
+
+        const handlePointerDown = (event: PointerEvent) => {
+            if (event.target instanceof Node && !packagePickerRef.current?.contains(event.target)) {
+                setIsPackagePickerOpen(false);
+            }
+        };
+
+        window.addEventListener('pointerdown', handlePointerDown);
+        return () => window.removeEventListener('pointerdown', handlePointerDown);
+    }, [isPackagePickerOpen]);
 
     const updatePromoFeedback = (type: string, message: string) => {
         setPromoFeedback(prev =>
@@ -121,6 +137,15 @@ const PublicBookingForm: React.FC<PublicBookingFormProps> = ({
             return pkgRegion === selectedRegion.toLowerCase();
         });
     }, [packages, selectedRegion]);
+
+    const visiblePackageGroups = useMemo(() => {
+        const groups = new Map<string, Package[]>();
+        filteredPackages.forEach(pkg => {
+            const category = pkg.category?.trim() || 'Lainnya';
+            groups.set(category, [...(groups.get(category) || []), pkg]);
+        });
+        return Array.from(groups.entries()).sort(([categoryA], [categoryB]) => categoryA.localeCompare(categoryB, 'id'));
+    }, [filteredPackages]);
 
     // When filteredPackages changes (data loads after region set), reset packageId if current
     // selection is no longer valid, and mark loading as done once packages arrive
@@ -310,6 +335,19 @@ const PublicBookingForm: React.FC<PublicBookingFormProps> = ({
         }
     };
 
+    const handlePackageSelection = (packageId: string) => {
+        const pkg = filteredPackages.find(p => p.id === packageId);
+        const defaultOpt = pkg?.durationOptions?.length
+            ? pkg.durationOptions.find(o => o.default) || pkg.durationOptions[0]
+            : undefined;
+        setFormData(prev => ({
+            ...prev,
+            packageId,
+            durationSelection: defaultOpt?.label || '',
+            unitPrice: defaultOpt ? Number(defaultOpt.price) : pkg ? pkg.price : undefined,
+        }));
+    };
+
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
             const file = e.target.files[0];
@@ -408,7 +446,7 @@ const PublicBookingForm: React.FC<PublicBookingFormProps> = ({
                 totalCost: totalProject,
                 amountPaid: dpAmount,
                 paymentStatus: dpAmount > 0 ? (remainingPayment <= 0 ? PaymentStatus.LUNAS : PaymentStatus.DP_TERBAYAR) : PaymentStatus.BELUM_BAYAR,
-                notes: `Referensi Pembayaran DP: ${formData.dpPaymentRef}${formData.durationSelection ? ` | Durasi dipilih: ${formData.durationSelection}` : ''}`,
+                notes: formData.durationSelection ? `Durasi dipilih: ${formData.durationSelection}` : '',
                 durationSelection: formData.durationSelection || undefined,
                 unitPrice: formData.unitPrice !== undefined ? Number(formData.unitPrice) : undefined,
                 promoCodeId: promoCodeAppliedId,
@@ -650,20 +688,85 @@ Mohon konfirmasi untuk langkah selanjutnya. Terima kasih! 🙏`;
     }
 
     const suggestedDp = totalProject * 0.3;
+    const selectedPackage = filteredPackages.find(pkg => pkg.id === formData.packageId);
 
     return (
         <div className={`public-page-body template-wrapper template-${template} min-h-screen p-3 md:p-4 sm:p-6 lg:p-8 flex items-center justify-center`}>
             <style>{`
-                .template-wrapper { background-color: var(--public-bg); color: var(--public-text-primary); }
+                .template-wrapper { background-color: var(--public-bg); color: var(--public-text-primary); --public-accent: #000; --public-accent-hover: #262626; --public-accent-hsl: 0 0% 0%; }
+                .template-wrapper .text-gradient { background: none; color: #000 !important; -webkit-text-fill-color: #000; }
                 .template-classic .form-container { max-width: 64rem; width: 100%; margin: auto; }
                 .template-modern .form-container { max-width: 72rem; width: 100%; margin: auto; display: grid; grid-template-columns: 1fr 2fr; gap: 2rem; align-items: start; }
                 .template-gallery .form-container { max-width: 56rem; width: 100%; margin: auto; }
                 .public-booking-form label { font-size: 12px !important; line-height: 1.4 !important; }
                 .public-booking-form p { font-size: 12px !important; line-height: 1.45 !important; }
-                .public-booking-form input:not([type="file"]), .public-booking-form select { font-size: 14px !important; height: 34px !important; min-height: 34px !important; padding: 0 12px !important; border-radius: 8px !important; }
+                .public-booking-form input:not([type="file"]), .public-booking-form select:not(.package-select) { font-size: 14px !important; height: 34px !important; min-height: 34px !important; padding: 0 12px !important; border-radius: 8px !important; }
                 .public-booking-form textarea { font-size: 14px !important; }
                 .public-booking-form input::placeholder, .public-booking-form textarea::placeholder { font-size: 13px !important; }
                 .public-booking-form h4 { font-size: 16px !important; line-height: 1.35 !important; }
+                @media (max-width: 640px) {
+                    #root .public-page-body .public-booking-form button#packageId,
+                    #root .public-page-body .public-booking-form button.package-option-button {
+                        box-sizing: border-box;
+                        width: 100%;
+                        min-width: 0 !important;
+                        min-height: 56px !important;
+                        max-height: none !important;
+                        height: auto !important;
+                        padding: 8px !important;
+                        font-size: 14px !important;
+                        line-height: 1.3 !important;
+                        gap: 8px !important;
+                        border-radius: 12px !important;
+                    }
+                    #root .public-page-body .public-booking-form button.package-option-button {
+                        column-gap: 8px !important;
+                        row-gap: 2px !important;
+                    }
+                    #root .public-page-body .public-booking-form #packageId svg,
+                    #root .public-page-body .public-booking-form .package-option-button svg {
+                        width: 20px !important;
+                        height: 20px !important;
+                        max-width: 20px !important;
+                        max-height: 20px !important;
+                    }
+                    #root .public-page-body .public-booking-form .package-picker-heading {
+                        font-size: 14px !important;
+                        line-height: 1.3 !important;
+                    }
+                    #root .public-page-body .public-booking-form .package-picker-title {
+                        font-size: 13px !important;
+                        line-height: 1.3 !important;
+                        display: -webkit-box;
+                        -webkit-box-orient: vertical;
+                        -webkit-line-clamp: 2;
+                        overflow: hidden;
+                        overflow-wrap: anywhere;
+                    }
+                    #root .public-page-body .public-booking-form .package-picker-subtitle {
+                        font-size: 12px !important;
+                        line-height: 1.35 !important;
+                    }
+                    #root .public-page-body .public-booking-form .package-picker-price {
+                        font-size: 12px !important;
+                        line-height: 1.25 !important;
+                    }
+                    #root .public-page-body .public-booking-form .duration-option-label,
+                    #root .public-page-body .public-booking-form .duration-option-price {
+                        font-size: 13px !important;
+                        line-height: 1.3 !important;
+                    }
+                    #root .public-page-body .public-booking-form .package-required-badge,
+                    #root .public-page-body .public-booking-form .package-price-caption {
+                        font-size: 11px !important;
+                        line-height: 1.3 !important;
+                    }
+                    #root .public-page-body .public-booking-form .total-cost-label,
+                    #root .public-page-body .public-booking-form .total-cost-value {
+                        font-size: 12px !important;
+                        line-height: 1.3 !important;
+                    }
+                }
                 .public-booking-form .booking-upload-box { box-sizing: border-box; width: 100%; min-width: 0; min-height: 176px; padding: 24px 20px; }
                 .public-booking-form .booking-upload-icon { width: 48px !important; height: 48px !important; }
                 .public-booking-form .booking-upload-instruction { font-size: 14px !important; }
@@ -676,13 +779,13 @@ Mohon konfirmasi untuk langkah selanjutnya. Terima kasih! 🙏`;
                 }
                 @media (max-width: 640px) {
                     .public-page-body .public-booking-form input:not([type="file"]):not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="range"]),
-                    .public-page-body .public-booking-form select {
+                    .public-page-body .public-booking-form select:not(.package-select) {
                         box-sizing: border-box;
                         width: 100%;
                         max-width: 100%;
                         min-width: 0;
-                        height: 34px !important;
-                        min-height: 34px !important;
+                        height: 40px !important;
+                        min-height: 40px !important;
                         padding: 0 10px !important;
                         font-size: 13px !important;
                         line-height: 1.25 !important;
@@ -701,7 +804,7 @@ Mohon konfirmasi untuk langkah selanjutnya. Terima kasih! 🙏`;
                         border-radius: 8px !important;
                     }
                     .public-page-body .public-booking-form label {
-                        font-size: 11px !important;
+                        font-size: 12px !important;
                         line-height: 1.3 !important;
                     }
                     .public-page-body .public-booking-form.space-y-5 > * + *,
@@ -720,9 +823,9 @@ Mohon konfirmasi untuk langkah selanjutnya. Terima kasih! 🙏`;
                     #root .public-page-body .public-booking-form button[type="submit"] {
                         box-sizing: border-box;
                         width: 100%;
-                        min-height: 38px !important;
+                        min-height: 44px !important;
                         max-height: none !important;
-                        height: 38px !important;
+                        height: 44px !important;
                         padding: 0 12px !important;
                         font-size: 13px !important;
                         line-height: 1.2 !important;
@@ -797,6 +900,12 @@ Mohon konfirmasi untuk langkah selanjutnya. Terima kasih! 🙏`;
                                     <div className="space-y-2">
                                         <label htmlFor="date" className="block text-xs text-black">Tanggal Acara Pernikahan (Opsional)</label>
                                         <input type="date" id="date" name="date" value={formData.date} onChange={handleFormChange} className="w-full px-4 py-3 rounded-xl border border-public-border bg-white text-black focus:outline-none focus:border-black transition-all" />
+                                        <p className="text-[10px] text-public-text-secondary">Kosongkan jika tanggal acara belum ditentukan.</p>
+                                        {formData.date && (
+                                            <button type="button" onClick={() => setFormData(prev => ({ ...prev, date: '' }))} className="text-xs font-semibold text-black hover:underline">
+                                                Kosongkan tanggal
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
                                 <div className="space-y-2">
@@ -809,45 +918,134 @@ Mohon konfirmasi untuk langkah selanjutnya. Terima kasih! 🙏`;
                                 </div>
                             </div>
 
-                            <div className="space-y-5">
+                            <div className="space-y-5 rounded-2xl border border-neutral-300 bg-white p-3 sm:p-4">
                                 <h4 className="text-sm md:text-base font-semibold text-gradient border-b border-black pb-2">Detail Package & Pembayaran</h4>
-                                <div className="space-y-2">
-                                    <label htmlFor="packageId" className="block text-xs text-public-text-secondary">Package</label>
-                                    <select
-                                        id="packageId"
-                                        name="packageId"
-                                        value={formData.packageId}
-                                        onChange={(e) => {
-                                            const val = e.target.value;
-                                            const pkg = filteredPackages.find(p => p.id === val);
-                                            const defaultOpt = pkg?.durationOptions && pkg.durationOptions.length > 0 ? (pkg.durationOptions.find(o => o.default) || pkg.durationOptions[0]) : undefined;
-                                            setFormData(prev => ({ ...prev, packageId: val, durationSelection: defaultOpt?.label || '', unitPrice: defaultOpt ? Number(defaultOpt.price) : (pkg ? pkg.price : undefined) }));
-                                        }}
-                                        className="w-full px-4 py-3 rounded-xl border border-public-border bg-white text-public-text-primary focus:outline-none focus:border-black transition-all"
-                                        required
-                                    >
-                                        <option value="">{isPackagesLoading ? 'Memuat Package...' : filteredPackages.length === 0 ? 'Tidak ada Package tersedia untuk wilayah ini' : 'Pilih Package...'}</option>
-                                        {(() => {
-                                            // Use filteredPackages which are already filtered by selectedRegion
-                                            const grouped: Record<string, typeof filteredPackages> = {} as any;
-                                            for (const p of filteredPackages) {
-                                                const cat = p.category || 'Lainnya';
-                                                if (!grouped[cat]) grouped[cat] = [] as any;
-                                                grouped[cat].push(p);
+                                <fieldset className="min-w-0 space-y-3 border-0 bg-transparent p-0 shadow-none">
+                                    <legend className="sr-only">Pilih package layanan</legend>
+                                    <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
+                                        <div className="min-w-0">
+                                            <h5 className="package-picker-heading text-sm font-extrabold leading-snug text-slate-900">Pilih Package Anda</h5>
+                                        </div>
+                                        <span className="package-required-badge self-start rounded-full bg-neutral-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-neutral-950 sm:shrink-0">
+                                            Wajib dipilih
+                                        </span>
+                                    </div>
+
+                                    {isPackagesLoading ? (
+                                        <p className="rounded-xl border border-neutral-200 bg-white px-3 py-4 text-center text-sm font-medium text-slate-600">
+                                            Memuat package...
+                                        </p>
+                                    ) : filteredPackages.length === 0 ? (
+                                        <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-4 text-center text-sm font-medium text-amber-800">
+                                            Tidak ada package tersedia untuk wilayah ini.
+                                        </p>
+                                    ) : (
+                                        <div className="space-y-2" ref={packagePickerRef} onKeyDown={e => {
+                                            if (e.key === 'Escape') {
+                                                setIsPackagePickerOpen(false);
+                                                packagePickerTriggerRef.current?.focus();
                                             }
-                                            return Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b)).map(([cat, list]) => (
-                                                <optgroup key={cat} label={cat}>
-                                                    {(list as typeof filteredPackages).map(p => (
-                                                        <option key={p.id} value={p.id}>
-                                                            {p.name}
-                                                        </option>
+                                        }}>
+                                            <label htmlFor="packageId" className="block text-xs font-bold text-neutral-950">
+                                                Package layanan
+                                            </label>
+                                            <button
+                                                id="packageId"
+                                                ref={packagePickerTriggerRef}
+                                                type="button"
+                                                aria-required="true"
+                                                aria-expanded={isPackagePickerOpen}
+                                                aria-controls="public-package-options"
+                                                onClick={() => setIsPackagePickerOpen(open => !open)}
+                                                className="flex w-full items-center gap-3 rounded-lg border border-neutral-300 bg-neutral-50 p-2.5 text-left shadow-none outline-none transition hover:bg-neutral-100 focus:border-black focus:ring-2 focus:ring-neutral-300"
+                                            >
+                                                {selectedPackage?.coverImage ? (
+                                                    <img src={selectedPackage.coverImage} alt="" className="h-12 w-12 shrink-0 rounded-lg object-cover" />
+                                                ) : (
+                                                    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-neutral-100 text-black">
+                                                        <PackageIcon className="h-5 w-5" aria-hidden="true" />
+                                                    </span>
+                                                )}
+                                                <span className="min-w-0 flex-1">
+                                                    <span className="package-picker-title block truncate text-sm font-bold text-slate-900">
+                                                        {selectedPackage?.name || 'Pilih package yang Anda inginkan'}
+                                                    </span>
+                                                    <span className="package-picker-subtitle block truncate text-xs font-medium text-slate-500">
+                                                        {selectedPackage?.category || 'Lihat pilihan package tersedia'}
+                                                    </span>
+                                                </span>
+                                                {selectedPackage && (
+                                                    <span className="hidden shrink-0 text-right sm:block">
+                                                        <span className="block text-[10px] font-semibold text-slate-500">
+                                                            {selectedPackage.durationOptions?.length ? 'Mulai dari' : 'Harga'}
+                                                        </span>
+                                                        <span className="package-picker-price block text-xs font-extrabold text-neutral-950">
+                                                            {formatCurrency(selectedPackage.durationOptions?.length
+                                                                ? Math.min(...selectedPackage.durationOptions.map(option => Number(option.price)))
+                                                                : Number(selectedPackage.price))}
+                                                        </span>
+                                                    </span>
+                                                )}
+                                                <ChevronDown className={`h-5 w-5 shrink-0 text-black transition-transform ${isPackagePickerOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
+                                            </button>
+                                            {isPackagePickerOpen && (
+                                                <div
+                                                    id="public-package-options"
+                                                    role="group"
+                                                    aria-label="Pilihan package"
+                                                    className="max-h-[min(60vh,24rem)] space-y-2 overflow-y-auto overscroll-contain rounded-xl border border-neutral-200 bg-neutral-50/70 p-1.5 sm:max-h-72 sm:p-2"
+                                                >
+                                                    {visiblePackageGroups.map(([category, categoryPackages], groupIndex) => (
+                                                        <div key={category}>
+                                                            {groupIndex > 0 && <div className="my-2.5 border-t border-neutral-300" aria-hidden="true" />}
+                                                            <p className="px-1 pb-1.5 pt-1 text-[10px] font-bold uppercase tracking-wide text-neutral-950">{category}</p>
+                                                            {categoryPackages.map(pkg => {
+                                                        const hasDurationOptions = !!pkg.durationOptions?.length;
+                                                        const startingPrice = hasDurationOptions
+                                                            ? Math.min(...pkg.durationOptions!.map(option => Number(option.price)))
+                                                            : Number(pkg.price);
+                                                    return (
+                                                        <button
+                                                            key={pkg.id}
+                                                            type="button"
+                                                            aria-pressed={formData.packageId === pkg.id}
+                                                            onClick={() => {
+                                                                handlePackageSelection(pkg.id);
+                                                                setIsPackagePickerOpen(false);
+                                                            }}
+                                                            className={`package-option-button grid w-full min-w-0 grid-cols-[2.5rem_minmax(0,1fr)] items-center gap-x-2 gap-y-0.5 rounded-lg border bg-white p-2 text-left shadow-sm transition hover:border-neutral-500 hover:bg-neutral-50 focus:border-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-300 sm:flex sm:gap-3 sm:rounded-xl sm:p-2.5 ${
+                                                                formData.packageId === pkg.id ? 'border-neutral-900 ring-1 ring-neutral-300' : 'border-neutral-200'
+                                                            }`}
+                                                        >
+                                                            {pkg.coverImage ? (
+                                                                <img src={pkg.coverImage} alt="" className="row-span-2 h-10 w-10 shrink-0 rounded-lg object-cover sm:row-span-1 sm:h-12 sm:w-12" />
+                                                            ) : (
+                                                                <span className="row-span-2 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-neutral-100 text-black sm:row-span-1 sm:h-12 sm:w-12">
+                                                                    <PackageIcon className="h-5 w-5" aria-hidden="true" />
+                                                                </span>
+                                                            )}
+                                                            <span className="min-w-0 flex-1">
+                                                                <span className="package-picker-title block text-sm font-bold text-slate-900">{pkg.name}</span>
+                                                            </span>
+                                                            <span className="package-picker-price-wrap col-start-2 flex w-full items-center justify-between gap-2 text-left sm:col-auto sm:block sm:w-auto sm:max-w-[7rem] sm:shrink-0 sm:whitespace-nowrap sm:text-right">
+                                                                {hasDurationOptions && <span className="package-price-caption block text-[10px] font-semibold text-slate-500">Mulai dari</span>}
+                                                                <span className="package-picker-price block text-[11px] font-extrabold text-neutral-950 sm:text-xs">{formatCurrency(startingPrice)}</span>
+                                                            </span>
+                                                        </button>
+                                                    );
+                                                            })}
+                                                        </div>
                                                     ))}
-                                                </optgroup>
-                                            ));
-                                        })()}
-                                    </select>
-                                    <p className="text-xs text-public-text-secondary">Pilih Package layanan yang sesuai dengan kebutuhan Anda</p>
-                                </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                    <p className="mt-2 text-[11px] font-medium text-slate-600" aria-live="polite">
+                                        {formData.packageId
+                                            ? 'bisa memilih durasi.'
+                                            : 'Pilih salah satu package untuk melanjutkan booking.'}
+                                    </p>
+                                </fieldset>
                                 {(() => {
                                     const pkg = filteredPackages.find(p => p.id === formData.packageId);
                                     if (!pkg) return null;
@@ -862,10 +1060,10 @@ Mohon konfirmasi untuk langkah selanjutnya. Terima kasih! 🙏`;
                                     const physicalItems = (selectedOpt?.physicalItems?.filter(p => p?.name).length ? selectedOpt.physicalItems : pkg.physicalItems)?.filter(p => p?.name) || [];
                                     const hasAnyDetail = photographers || videographers || processingTime || digitalItems.length > 0 || physicalItems.length > 0;
                                     return (
-                                        <div className="mt-3 p-3 border border-black bg-blue-50/10 rounded-xl space-y-2">
-                                            <p className="text-xs font-semibold text-blue-600">
+                                        <div className="mt-3 space-y-2">
+                                            <p className="text-xs font-semibold text-black">
                                                 Detail Package: {pkg.name}
-                                                {selectedOpt && hasDurationOpts && <span className="font-normal text-blue-500"> — {selectedOpt.label}</span>}
+                                                {selectedOpt && hasDurationOpts && <span className="font-normal text-neutral-700"> — {selectedOpt.label}</span>}
                                             </p>
                                             {hasAnyDetail ? (
                                                 <ul className="text-xs text-public-text-secondary space-y-1">
@@ -884,18 +1082,18 @@ Mohon konfirmasi untuk langkah selanjutnya. Terima kasih! 🙏`;
                                 {(() => {
                                     const pkg = filteredPackages.find(p => p.id === formData.packageId); if (!pkg?.durationOptions || pkg.durationOptions.length === 0) return null; return (
                                         <div className="mt-2">
-                                            <label className="text-xs font-semibold text-blue-600">Jam Kerja</label>
-                                            <p className="text-xs text-public-text-secondary mt-1 mb-2">Pilih durasi jam kerja sesuai kebutuhan Acara Pernikahan Anda. Detail Package akan berubah sesuai pilihan.</p>
+                                            <label className="text-xs font-semibold text-black">Jam Kerja</label>
+                                            <p className="text-xs text-public-text-secondary mt-1 mb-2">Pilih durasi jam kerja </p>
                                             <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
                                                 {pkg.durationOptions.map(opt => (
-                                                    <label key={opt.label} className={`flex items-center justify-between p-3 rounded-xl border-2 cursor-pointer transition-all ${formData.durationSelection === opt.label
-                                                        ? 'border-blue-500 bg-blue-50/10 shadow-md'
-                                                        : 'border-public-border hover:border-blue-300 hover:bg-blue-50/5'
+                                                    <label key={opt.label} className={`min-h-11 flex items-center justify-between border-b border-neutral-200 px-2 py-2.5 last:border-b-0 cursor-pointer transition-colors ${formData.durationSelection === opt.label
+                                                        ? 'border-l-2 border-l-black bg-neutral-100'
+                                                        : 'hover:bg-neutral-50'
                                                         }`}>
-                                                        <span className="text-sm font-medium">{opt.label}</span>
+                                                        <span className="duration-option-label text-sm font-medium">{opt.label}</span>
                                                         <div className="flex items-center gap-3">
-                                                            <span className="text-sm font-semibold text-blue-600">{formatCurrency(opt.price)}</span>
-                                                            <input type="radio" name="durationSelection" value={opt.label} checked={formData.durationSelection === opt.label} onChange={handleFormChange} className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-blue-600 focus:ring-blue-500 flex-shrink-0" />
+                                                            <span className="duration-option-price text-sm font-semibold text-black">{formatCurrency(opt.price)}</span>
+                                                            <input type="radio" name="durationSelection" value={opt.label} checked={formData.durationSelection === opt.label} onChange={handleFormChange} className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-black focus:ring-neutral-900 flex-shrink-0" />
                                                         </div>
                                                     </label>
                                                 ))}
@@ -904,12 +1102,11 @@ Mohon konfirmasi untuk langkah selanjutnya. Terima kasih! 🙏`;
                                     );
                                 })()}
                                 <div className="space-y-2">
-                                    <label className="block text-xs font-semibold text-blue-600">Add-On Lainnya (Opsional)</label>
-                                    <p className="text-xs text-public-text-secondary">Pilih layanan tambahan yang Anda butuhkan</p>
-                                    <div className="p-3 border-2 border-blue-200 bg-blue-50/5 rounded-xl space-y-2 mt-2">{filteredAddOns.length > 0 ? filteredAddOns.map(addon => (<label key={addon.id} className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition-all ${formData.selectedAddOnIds.includes(addon.id)
-                                        ? 'bg-blue-100/20 border border-blue-400'
-                                        : 'hover:bg-blue-50/10 border border-transparent'
-                                        }`}><span className="text-sm text-public-text-primary font-medium">{addon.name}</span><div className="flex items-center gap-2"><span className="text-sm font-semibold text-blue-600">{formatCurrency(addon.price)}</span><input type="checkbox" id={addon.id} name="addOns" checked={formData.selectedAddOnIds.includes(addon.id)} onChange={handleFormChange} className="h-4 w-4 text-blue-600 rounded focus:ring-blue-500 flex-shrink-0" /></div></label>)) : <p className="text-xs text-public-text-secondary">Tidak ada add-on untuk wilayah ini.</p>}</div></div>
+                                    <label className="block text-xs font-semibold text-black">Add-On Lainnya (Opsional)</label>
+                                    <div className="space-y-1">{filteredAddOns.length > 0 ? filteredAddOns.map(addon => (<label key={addon.id} className={`flex items-center justify-between border-b border-neutral-200 px-2 py-2 last:border-b-0 cursor-pointer transition-colors ${formData.selectedAddOnIds.includes(addon.id)
+                                        ? 'bg-neutral-100'
+                                        : 'hover:bg-neutral-50'
+                                        }`}><span className="text-sm text-public-text-primary font-medium">{addon.name}</span><div className="flex items-center gap-2"><span className="text-sm font-semibold text-black">{formatCurrency(addon.price)}</span><input type="checkbox" id={addon.id} name="addOns" checked={formData.selectedAddOnIds.includes(addon.id)} onChange={handleFormChange} className="h-4 w-4 text-black rounded focus:ring-neutral-900 flex-shrink-0" /></div></label>)) : <p className="text-xs text-public-text-secondary">Tidak ada add-on untuk wilayah ini.</p>}</div></div>
 
                                 <div className="space-y-2">
                                     <label htmlFor="promoCode" className="block text-xs text-public-text-secondary">Kode Promo (Opsional)</label>
@@ -918,18 +1115,18 @@ Mohon konfirmasi untuk langkah selanjutnya. Terima kasih! 🙏`;
                                     {promoFeedback.message && <p className={`text-xs ${promoFeedback.type === 'success' ? 'text-green-500' : 'text-red-500'}`}>{promoFeedback.message}</p>}
                                 </div>
 
-                                <div className="p-3 md:p-4 bg-public-bg rounded-lg space-y-2 md:space-y-3">
+                                <div className="space-y-2 md:space-y-3">
                                     {discountAmount > 0 && (
                                         <>
                                             <div className="flex justify-between items-center text-sm"><span className="text-public-text-secondary">Subtotal</span><span className="text-public-text-primary">{formatCurrency(totalBeforeDiscount)}</span></div>
                                             <div className="flex justify-between items-center text-sm"><span className="text-public-text-secondary">Diskon ({discountText})</span><span className="text-green-500">-{formatCurrency(discountAmount)}</span></div>
                                         </>
                                     )}
-                                    <div className="flex justify-between items-center font-bold text-lg"><span className="text-public-text-secondary">Total Biaya</span><span className="text-public-text-primary">{formatCurrency(totalProject)}</span></div>
+                                    <div className="flex justify-between items-center font-bold text-lg"><span className="total-cost-label text-public-text-secondary">Total Biaya</span><span className="total-cost-value text-public-text-primary">{formatCurrency(totalProject)}</span></div>
                                     <hr className="border-public-border" />
                                     <p className="text-sm text-public-text-secondary">Silakan transfer Uang Muka (DP) ke rekening berikut:</p>
                                     <p className="font-semibold text-public-text-primary text-center py-2 bg-public-surface rounded-md border border-public-border">{userProfile.bankAccount}</p>
-                                    <div className="grid grid-cols-2 gap-4">
+                                    <div className="grid grid-cols-1 gap-4">
                                         <div className="space-y-2">
                                             <label htmlFor="dp" className="block text-xs text-public-text-secondary">Jumlah DP Ditransfer</label>
                                             <RupiahInput
@@ -942,48 +1139,43 @@ Mohon konfirmasi untuk langkah selanjutnya. Terima kasih! 🙏`;
                                             />
                                             <p className="text-xs text-public-text-secondary text-right">Saran DP (30%): {formatCurrency(suggestedDp)}</p>
                                         </div>
-                                        <div className="space-y-2">
-                                            <label htmlFor="dpPaymentRef" className="block text-xs text-public-text-secondary">No. Ref / 4 Digit Rek</label>
-                                            <input type="text" name="dpPaymentRef" id="dpPaymentRef" value={formData.dpPaymentRef} onChange={handleFormChange} className="w-full px-4 py-3 rounded-xl border border-public-border bg-white text-public-text-primary focus:outline-none focus:ring-2 focus:ring-public-accent focus:border-transparent transition-all" placeholder="1234" />
-                                            <p className="text-xs text-public-text-secondary">Nomor referensi atau 4 digit terakhir rekening pengirim</p>
-                                        </div>
                                     </div>
                                     <div className="space-y-2 !mt-4">
-                                        <label htmlFor="dpPaymentProof" className="block text-xs font-semibold text-blue-600">Bukti Transfer DP (Opsional)</label>
-                                        <div className="booking-upload-box mt-2 flex justify-center rounded-2xl border-2 border-dashed border-blue-300 bg-gradient-to-br from-blue-50/70 to-white transition-colors hover:border-blue-400">
+                                        <label htmlFor="dpPaymentProof" className="block text-xs font-semibold text-black">Bukti Transfer DP (Opsional)</label>
+                                        <div className="booking-upload-box mt-2 flex justify-center rounded-2xl border-2 border-dashed border-neutral-400 bg-gradient-to-br from-neutral-50 to-white transition-colors hover:border-neutral-600">
                                             {paymentProof ? (
                                                 <div className="flex w-full min-w-0 flex-col gap-3 sm:flex-row sm:items-center">
                                                     {paymentProofPreviewUrl ? (
                                                         <img
                                                             src={paymentProofPreviewUrl}
                                                             alt={`Pratinjau bukti transfer ${paymentProof.name}`}
-                                                            className="h-36 w-full rounded-xl border border-blue-100 object-contain bg-white sm:h-28 sm:w-36"
+                                                            className="h-36 w-full rounded-xl border border-neutral-200 object-contain bg-white sm:h-28 sm:w-36"
                                                         />
                                                     ) : (
-                                                        <div className="flex h-24 w-full items-center justify-center rounded-xl border border-blue-100 bg-white text-sm font-bold text-blue-600 sm:h-20 sm:w-28">
+                                                        <div className="flex h-24 w-full items-center justify-center rounded-xl border border-neutral-200 bg-white text-sm font-bold text-black sm:h-20 sm:w-28">
                                                             PDF
                                                         </div>
                                                     )}
                                                     <div className="min-w-0 flex-1 text-center sm:text-left">
-                                                        <p className="text-sm font-bold text-blue-900">Bukti transfer siap</p>
-                                                        <p className="mt-1 break-all text-xs text-blue-700">{paymentProof.name}</p>
-                                                        <p className="mt-1 text-xs text-blue-600/75">{(paymentProof.size / (1024 * 1024)).toFixed(2)} MB</p>
-                                                        <label htmlFor="dpPaymentProof" className="mt-2 inline-flex cursor-pointer items-center rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-blue-700">
+                                                        <p className="text-sm font-bold text-neutral-950">Bukti transfer siap</p>
+                                                        <p className="mt-1 break-all text-xs text-neutral-700">{paymentProof.name}</p>
+                                                        <p className="mt-1 text-xs text-neutral-600">{(paymentProof.size / (1024 * 1024)).toFixed(2)} MB</p>
+                                                        <label htmlFor="dpPaymentProof" className="mt-2 inline-flex cursor-pointer items-center rounded-lg bg-black px-3 py-2 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-neutral-800">
                                                             Ganti file
                                                         </label>
                                                     </div>
                                                 </div>
                                             ) : (
                                                 <div className="text-center">
-                                                    <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-100 text-blue-600">
+                                                    <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-neutral-100 text-black">
                                                         <UploadIcon className="booking-upload-icon h-6 w-6" />
                                                     </span>
                                                     <p className="mt-3 text-sm font-bold text-public-text-primary">Unggah bukti transfer</p>
                                                     <p className="booking-upload-instruction mt-1 text-xs text-public-text-secondary">Pilih gambar atau dokumen bukti pembayaran</p>
-                                                    <label htmlFor="dpPaymentProof" className="mt-3 inline-flex cursor-pointer items-center rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-blue-700">
+                                                    <label htmlFor="dpPaymentProof" className="mt-3 inline-flex cursor-pointer items-center rounded-lg bg-black px-4 py-2 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-neutral-800">
                                                         Pilih file
                                                     </label>
-                                                    <p className="booking-upload-hint mt-2 text-[11px] text-blue-600/70">PNG, JPG, PDF · Maksimal 10 MB</p>
+                                                    <p className="booking-upload-hint mt-2 text-[11px] text-neutral-600">PNG, JPG, PDF · Maksimal 10 MB</p>
                                                 </div>
                                             )}
                                             <input id="dpPaymentProof" name="dpPaymentProof" type="file" className="sr-only" onChange={handleFileChange} accept="image/png, image/jpeg, image/jpg, application/pdf" />
@@ -1000,7 +1192,7 @@ Mohon konfirmasi untuk langkah selanjutnya. Terima kasih! 🙏`;
                         </div>
 
                         <div className="pt-6">
-                            <button type="submit" disabled={isSubmitting} className="w-full px-5 py-3 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 active:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl">{isSubmitting ? 'Mengirim...' : 'Kirim Formulir Pemesanan'}</button>
+                            <button type="submit" disabled={isSubmitting} className="w-full px-5 py-3 rounded-xl bg-black text-white font-semibold hover:bg-neutral-800 active:bg-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl">{isSubmitting ? 'Mengirim...' : 'Kirim Formulir Pemesanan'}</button>
                         </div>
                     </form>
                     <div className="mt-6 flex justify-center items-center gap-4">

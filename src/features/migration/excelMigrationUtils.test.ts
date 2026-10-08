@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseClientsFromSheet, parseTeamPaymentsFromSheet } from './excelMigrationUtils';
+import { parseClientsFromSheet, parseRawDate, parseRawNumber, parseTeamPaymentsFromSheet } from './excelMigrationUtils';
 
 describe('Excel migration terminology', () => {
   it('imports the renamed bride and event columns', () => {
@@ -41,5 +41,19 @@ describe('Excel migration terminology', () => {
       teamMemberName: 'Andi',
       projectName: 'Pernikahan Rian & Maya',
     });
+  });
+
+  it('parses Indonesian currency strings with thousand separators correctly', () => {
+    expect(parseRawNumber('Rp 1.200.000')).toBe(1200000);
+    expect(parseRawNumber('1.200.000')).toBe(1200000);
+    expect(parseRawNumber('1,200,000')).toBe(1200000);
+    expect(parseRawNumber('Rp 1.200,50')).toBe(1200.5);
+    expect(parseRawNumber('-Rp 1.200.000')).toBe(-1200000);
+  });
+
+  it('normalizes common Indonesian date formats before saving rows', () => {
+    expect(parseRawDate('27/12/2026')).toBe('2026-12-27');
+    expect(parseRawDate('27-12-2026')).toBe('2026-12-27');
+    expect(parseRawDate('27.12.2026')).toBe('2026-12-27');
   });
 });

@@ -61,6 +61,29 @@ body {
   display: none;
 }
 
+.vendor-gallery-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-text-secondary) transparent;
+}
+
+.vendor-gallery-scroll::-webkit-scrollbar {
+  display: block;
+  width: 8px;
+}
+
+.vendor-gallery-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.vendor-gallery-scroll::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 4px;
+}
+
+.vendor-gallery-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-secondary);
+}
+
 /* Global Tables, Forms, and Details Borders */
 table {
   border-collapse: collapse;

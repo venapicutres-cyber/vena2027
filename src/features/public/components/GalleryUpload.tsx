@@ -18,6 +18,103 @@ const BOOKING_LINKS_BY_REGION = [
     { value: 'banten', label: 'Banten' },
 ];
 
+interface GalleryDraftImagePickerProps {
+    inputId: string;
+    files: File[];
+    onFilesSelected: (files: File[]) => void;
+    onRemoveFile: (index: number) => void;
+    disabled: boolean;
+    isUploading: boolean;
+    progress: number;
+}
+
+const GalleryDraftImagePicker: React.FC<GalleryDraftImagePickerProps> = ({
+    inputId,
+    files,
+    onFilesSelected,
+    onRemoveFile,
+    disabled,
+    isUploading,
+    progress,
+}) => {
+    const [previewUrls, setPreviewUrls] = useState<string[]>([]);
+
+    useEffect(() => {
+        const urls = files.map(file => URL.createObjectURL(file));
+        setPreviewUrls(urls);
+        return () => urls.forEach(url => URL.revokeObjectURL(url));
+    }, [files]);
+
+    return (
+        <div className="space-y-3 rounded-xl border border-brand-border/50 bg-brand-bg/30 p-3">
+            <div className="flex items-center justify-between gap-3">
+                <span className="text-sm font-medium text-brand-text-light">Foto Pricelist ({files.length})</span>
+                <label className={`inline-flex cursor-pointer items-center gap-2 rounded-lg border border-brand-accent/30 bg-brand-accent/5 px-3 py-2 text-xs font-semibold text-brand-accent transition-colors hover:bg-brand-accent/10 ${disabled ? 'pointer-events-none opacity-50' : ''}`}>
+                    <UploadIcon className="h-4 w-4" />
+                    Pilih Foto
+                    <input
+                        id={inputId}
+                        type="file"
+                        multiple
+                        accept="image/*"
+                        className="hidden"
+                        disabled={disabled}
+                        onChange={event => {
+                            onFilesSelected(Array.from(event.target.files || []));
+                            event.target.value = '';
+                        }}
+                    />
+                </label>
+            </div>
+
+            {files.length > 0 ? (
+                <div className="vendor-gallery-scroll grid max-h-48 grid-cols-3 gap-2 overflow-y-auto p-1 sm:grid-cols-4">
+                    {files.map((file, index) => (
+                        <div key={`${file.name}-${file.lastModified}-${index}`} className="group relative aspect-square overflow-hidden rounded-lg border border-brand-border">
+                            {previewUrls[index] && <img src={previewUrls[index]} alt={file.name} className="h-full w-full object-cover" />}
+                            <button
+                                type="button"
+                                onClick={() => onRemoveFile(index)}
+                                disabled={disabled}
+                                aria-label={`Hapus ${file.name} dari pilihan foto`}
+                                className="absolute right-1 top-1 rounded-md bg-red-600 p-1 text-white opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100 disabled:opacity-50"
+                            >
+                                <TrashIcon className="h-3 w-3" />
+                            </button>
+                        </div>
+                    ))}
+                </div>
+            ) : (
+                <div className="rounded-lg border border-dashed border-brand-border px-3 py-4 text-center text-xs text-brand-text-secondary">
+                    Belum ada foto dipilih
+                </div>
+            )}
+
+            {isUploading && (
+                <div className="space-y-2" role="status" aria-live="polite">
+                    <div className="flex items-center justify-between text-xs text-brand-text-secondary">
+                        <span className="inline-flex items-center gap-2">
+                            <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-brand-accent border-t-transparent" aria-hidden="true" />
+                            Mengunggah foto...
+                        </span>
+                        <span>{progress}%</span>
+                    </div>
+                    <div
+                        className="h-2 overflow-hidden rounded-full bg-brand-input"
+                        role="progressbar"
+                        aria-label="Progres upload foto Pricelist"
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                        aria-valuenow={progress}
+                    >
+                        <div className="h-full bg-brand-accent transition-all duration-300" style={{ width: `${progress}%` }} />
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
 const GalleryUpload: React.FC<GalleryUploadProps> = ({ userProfile, showNotification }) => {
     const [galleries, setGalleries] = useState<Gallery[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -26,6 +123,10 @@ const GalleryUpload: React.FC<GalleryUploadProps> = ({ userProfile, showNotifica
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
     const [selectedGallery, setSelectedGallery] = useState<Gallery | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [createImageFiles, setCreateImageFiles] = useState<File[]>([]);
+    const [editImageFiles, setEditImageFiles] = useState<File[]>([]);
+    const [isUploadingDraftImages, setIsUploadingDraftImages] = useState(false);
+    const [draftImageUploadProgress, setDraftImageUploadProgress] = useState(0);
 
     const [newGallery, setNewGallery] = useState({
         title: '',
@@ -67,6 +168,28 @@ const GalleryUpload: React.FC<GalleryUploadProps> = ({ userProfile, showNotifica
         }
     };
 
+    const validateDraftImageFiles = (files: File[]) => files.filter(file => {
+        if (file.size > 10 * 1024 * 1024) {
+            showNotification(`File ${file.name} terlalu besar (max 10MB)`);
+            return false;
+        }
+        if (!file.type.startsWith('image/')) {
+            showNotification(`File ${file.name} bukan gambar`);
+            return false;
+        }
+        return true;
+    });
+
+    const handleCreateDraftFiles = (files: File[]) => {
+        const validFiles = validateDraftImageFiles(files);
+        setCreateImageFiles(current => [...current, ...validFiles]);
+    };
+
+    const handleEditDraftFiles = (files: File[]) => {
+        const validFiles = validateDraftImageFiles(files);
+        setEditImageFiles(current => [...current, ...validFiles]);
+    };
+
     const handleCreateGallery = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!newGallery.title.trim() || !newGallery.region.trim()) {
@@ -74,9 +197,12 @@ const GalleryUpload: React.FC<GalleryUploadProps> = ({ userProfile, showNotifica
             return;
         }
 
+        const filesToUpload = createImageFiles;
+        let createdGallery: Gallery | null = null;
+        let uploadedCount = 0;
         try {
             setIsSubmitting(true);
-            const gallery = await createGallery({
+            createdGallery = await createGallery({
                 user_id: userProfile.adminUserId,
                 title: newGallery.title.trim(),
                 region: newGallery.region.trim(),
@@ -86,15 +212,43 @@ const GalleryUpload: React.FC<GalleryUploadProps> = ({ userProfile, showNotifica
                 images: []
             });
 
-            setGalleries(prev => [gallery, ...prev]);
+            if (filesToUpload.length > 0) {
+                setIsUploadingDraftImages(true);
+                setDraftImageUploadProgress(0);
+                const uploadedImages = await uploadGalleryImages(
+                    createdGallery.id,
+                    filesToUpload,
+                    setDraftImageUploadProgress
+                );
+                uploadedCount = uploadedImages.length;
+                setDraftImageUploadProgress(100);
+                createdGallery = { ...createdGallery, images: [...createdGallery.images, ...uploadedImages] };
+            }
+
+            setGalleries(prev => [createdGallery!, ...prev]);
             setIsCreateModalOpen(false);
             setNewGallery({ title: '', region: '', description: '', is_public: true, booking_link: '' });
-            showNotification('Pricelist berhasil dibuat');
+            setCreateImageFiles([]);
+            showNotification(filesToUpload.length > 0
+                ? uploadedCount === filesToUpload.length
+                    ? `Pricelist berhasil dibuat dengan ${uploadedCount} foto`
+                    : `Pricelist dibuat, ${uploadedCount} dari ${filesToUpload.length} foto berhasil diunggah`
+                : 'Pricelist berhasil dibuat');
         } catch (error) {
             console.error('Error creating gallery:', error);
-            showNotification('Gagal membuat Pricelist');
+            if (createdGallery) {
+                setGalleries(prev => [createdGallery!, ...prev]);
+                setIsCreateModalOpen(false);
+                setNewGallery({ title: '', region: '', description: '', is_public: true, booking_link: '' });
+                setCreateImageFiles([]);
+                showNotification('Pricelist dibuat, tetapi foto gagal diunggah. Anda dapat menambahkannya nanti.');
+            } else {
+                showNotification('Gagal membuat Pricelist');
+            }
         } finally {
             setIsSubmitting(false);
+            setIsUploadingDraftImages(false);
+            setDraftImageUploadProgress(0);
         }
     };
 
@@ -129,13 +283,16 @@ const GalleryUpload: React.FC<GalleryUploadProps> = ({ userProfile, showNotifica
                 (progress) => setUploadProgress(progress)
             );
 
+            const updatedImages = [...selectedGallery.images, ...uploadedImages];
             setGalleries(prev => prev.map(g =>
                 g.id === selectedGallery.id
-                    ? { ...g, images: [...g.images, ...uploadedImages] }
+                    ? { ...g, images: updatedImages }
                     : g
             ));
 
-            setIsUploadModalOpen(false);
+            setSelectedGallery(prev => prev && prev.id === selectedGallery.id
+                ? { ...prev, images: updatedImages }
+                : prev);
             setSelectedFiles([]);
             setUploadProgress(0);
             showNotification(`${uploadedImages.length} gambar berhasil diupload`);
@@ -266,14 +423,15 @@ const GalleryUpload: React.FC<GalleryUploadProps> = ({ userProfile, showNotifica
             setIsSubmitting(true);
             const result = await uploadGalleryPdf(selectedGallery.id, selectedPdfFile, finalPdfName);
 
-            setGalleries(prev => prev.map(g =>
+                const updatedGallery = { ...selectedGallery, pdf_url: result.pdf_url, pdf_name: result.pdf_name };
+                setGalleries(prev => prev.map(g =>
                 g.id === selectedGallery.id
-                    ? { ...g, pdf_url: result.pdf_url, pdf_name: result.pdf_name }
+                    ? updatedGallery
                     : g
             ));
 
+                setSelectedGallery(prev => prev && prev.id === selectedGallery.id ? updatedGallery : prev);
             setPdfDisplayName(result.pdf_name);
-            setIsUploadModalOpen(false);
             setSelectedPdfFile(null);
             showNotification('PDF Pricelist berhasil diupload');
         } catch (error) {
@@ -304,15 +462,17 @@ const GalleryUpload: React.FC<GalleryUploadProps> = ({ userProfile, showNotifica
     };
 
     const openUploadModal = (gallery: Gallery) => {
-        setSelectedGallery(gallery);
-        setIsUploadModalOpen(true);
-        setSelectedFiles([]);
-        setSelectedPdfFile(null);
-        setPdfDisplayName(gallery.pdf_name || 'Pricelist PDF');
+        openEditModal(gallery);
     };
 
     const openEditModal = (gallery: Gallery) => {
         setSelectedGallery(gallery);
+        setEditImageFiles([]);
+        setSelectedFiles([]);
+        setSelectedPdfFile(null);
+        setPdfDisplayName(gallery.pdf_name || 'Pricelist PDF');
+        setUploadProgress(0);
+        setIsAllPhotosOpen(false);
         setEditGallery({
             title: gallery.title,
             region: gallery.region,
@@ -360,6 +520,9 @@ const GalleryUpload: React.FC<GalleryUploadProps> = ({ userProfile, showNotifica
             return;
         }
 
+        const filesToUpload = editImageFiles;
+        let updatedGallery: Gallery | null = null;
+        let uploadedCount = 0;
         try {
             setIsSubmitting(true);
             const updated = await updateGallery(selectedGallery.id, {
@@ -370,16 +533,44 @@ const GalleryUpload: React.FC<GalleryUploadProps> = ({ userProfile, showNotifica
                 booking_link: editGallery.booking_link?.trim() || null
             });
 
+            updatedGallery = { ...selectedGallery, ...updated, images: selectedGallery.images };
+            if (filesToUpload.length > 0) {
+                setIsUploadingDraftImages(true);
+                setDraftImageUploadProgress(0);
+                const uploadedImages = await uploadGalleryImages(
+                    selectedGallery.id,
+                    filesToUpload,
+                    setDraftImageUploadProgress
+                );
+                uploadedCount = uploadedImages.length;
+                setDraftImageUploadProgress(100);
+                updatedGallery = { ...updatedGallery, images: [...updatedGallery.images, ...uploadedImages] };
+            }
+
             setGalleries(prev => prev.map(g =>
-                g.id === selectedGallery.id ? { ...g, ...updated } : g
+                g.id === selectedGallery.id ? updatedGallery! : g
             ));
             setIsEditModalOpen(false);
-            showNotification('Pricelist berhasil diupdate');
+            setEditImageFiles([]);
+            showNotification(filesToUpload.length > 0
+                ? uploadedCount === filesToUpload.length
+                    ? `Pricelist berhasil diupdate dengan ${uploadedCount} foto`
+                    : `Pricelist diupdate, ${uploadedCount} dari ${filesToUpload.length} foto berhasil diunggah`
+                : 'Pricelist berhasil diupdate');
         } catch (error) {
             console.error('Error updating gallery:', error);
-            showNotification('Gagal mengupdate Pricelist');
+            if (updatedGallery) {
+                setGalleries(prev => prev.map(g => g.id === updatedGallery!.id ? updatedGallery! : g));
+                setIsEditModalOpen(false);
+                setEditImageFiles([]);
+                showNotification('Pricelist tersimpan, tetapi foto gagal diunggah. Anda dapat menambahkannya nanti.');
+            } else {
+                showNotification('Gagal mengupdate Pricelist');
+            }
         } finally {
             setIsSubmitting(false);
+            setIsUploadingDraftImages(false);
+            setDraftImageUploadProgress(0);
         }
     };
 
@@ -489,13 +680,6 @@ const GalleryUpload: React.FC<GalleryUploadProps> = ({ userProfile, showNotifica
 
                             {/* Action Buttons */}
                             <div className="mt-auto flex items-center gap-2 pt-4 border-t border-brand-border/50">
-                                <button
-                                    onClick={() => openUploadModal(gallery)}
-                                    className="button-primary flex-1 !py-2 !px-2 text-[11px] font-semibold"
-                                >
-                                    <UploadIcon className="w-4 h-4 flex-shrink-0" />
-                                    <span className="truncate">Upload</span>
-                                </button>
                                 <div className="flex items-center gap-1.5 flex-shrink-0">
                                     <button
                                         onClick={() => openEditModal(gallery)}
@@ -559,7 +743,16 @@ const GalleryUpload: React.FC<GalleryUploadProps> = ({ userProfile, showNotifica
             )}
 
             {/* Create Gallery Modal */}
-            <Modal isOpen={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} title="Buat Pricelist Baru">
+            <Modal
+                isOpen={isCreateModalOpen}
+                onClose={() => {
+                    if (!isSubmitting) {
+                        setCreateImageFiles([]);
+                        setIsCreateModalOpen(false);
+                    }
+                }}
+                title="Buat Pricelist Baru"
+            >
                 <form onSubmit={handleCreateGallery} className="space-y-5 p-1">
                     <div className="input-group">
                         <input
@@ -642,10 +835,24 @@ const GalleryUpload: React.FC<GalleryUploadProps> = ({ userProfile, showNotifica
                         </label>
                     </div>
 
+                    <GalleryDraftImagePicker
+                        inputId="new-gallery-images"
+                        files={createImageFiles}
+                        onFilesSelected={handleCreateDraftFiles}
+                        onRemoveFile={index => setCreateImageFiles(current => current.filter((_, fileIndex) => fileIndex !== index))}
+                        disabled={isSubmitting}
+                        isUploading={isUploadingDraftImages}
+                        progress={draftImageUploadProgress}
+                    />
+
                     <div className="flex gap-3 pt-6 border-t border-brand-border/50 sticky bottom-0 bg-brand-surface">
                         <button
                             type="button"
-                            onClick={() => setIsCreateModalOpen(false)}
+                            onClick={() => {
+                                setCreateImageFiles([]);
+                                setIsCreateModalOpen(false);
+                            }}
+                            disabled={isSubmitting}
                             className="flex-1 button-secondary"
                         >
                             Batal
@@ -655,14 +862,23 @@ const GalleryUpload: React.FC<GalleryUploadProps> = ({ userProfile, showNotifica
                             disabled={isSubmitting}
                             className="flex-1 button-primary"
                         >
-                            {isSubmitting ? 'Membuat...' : 'Buat Pricelist'}
+                            {isUploadingDraftImages ? `Mengunggah foto ${draftImageUploadProgress}%` : isSubmitting ? 'Menyimpan...' : 'Buat Pricelist'}
                         </button>
                     </div>
                 </form>
             </Modal>
 
             {/* Edit Gallery Modal */}
-            <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title="Edit Pricelist">
+            <Modal
+                isOpen={isEditModalOpen}
+                onClose={() => {
+                    if (!isSubmitting) {
+                        setEditImageFiles([]);
+                        setIsEditModalOpen(false);
+                    }
+                }}
+                title="Edit Pricelist"
+            >
                 <form onSubmit={handleEditGallery} className="space-y-5 p-1">
                     <div className="input-group">
                         <input
@@ -745,10 +961,155 @@ const GalleryUpload: React.FC<GalleryUploadProps> = ({ userProfile, showNotifica
                         </label>
                     </div>
 
+                    <GalleryDraftImagePicker
+                        inputId="edit-gallery-images"
+                        files={editImageFiles}
+                        onFilesSelected={handleEditDraftFiles}
+                        onRemoveFile={index => setEditImageFiles(current => current.filter((_, fileIndex) => fileIndex !== index))}
+                        disabled={isSubmitting}
+                        isUploading={isUploadingDraftImages}
+                        progress={draftImageUploadProgress}
+                    />
+
+                    {selectedGallery && (
+                        <div className="space-y-4">
+                            <section className="space-y-3 rounded-2xl border border-brand-border/50 bg-brand-bg/30 p-3 sm:p-4">
+                                <div className="flex items-center justify-between gap-3">
+                                    <h4 className="text-sm font-semibold text-brand-text-light">Foto Saat Ini</h4>
+                                    <span className="text-xs text-brand-text-secondary">{selectedGallery.images.length} foto</span>
+                                </div>
+
+                                {selectedGallery.images.length > 0 ? (
+                                    <>
+                                        <div className="vendor-gallery-scroll grid max-h-[45vh] grid-cols-3 gap-2 overflow-y-auto p-1 sm:grid-cols-4">
+                                            {(isAllPhotosOpen ? selectedGallery.images : selectedGallery.images.slice(0, 6)).map((image, index) => {
+                                                const ratio = imageRatios[image.id] || 1;
+                                                const actualIndex = selectedGallery.images.findIndex(item => item.id === image.id);
+                                                return (
+                                                    <div key={image.id || index} className="group relative">
+                                                        <img
+                                                            src={image.url}
+                                                            alt={`${selectedGallery.title} ${actualIndex + 1}`}
+                                                            onLoad={event => handleImageLoad(image.id, event)}
+                                                            className="h-auto w-full rounded-xl border border-brand-border/50 bg-brand-surface object-contain"
+                                                            style={{ aspectRatio: `${ratio}` }}
+                                                        />
+                                                        <div className="absolute bottom-2 right-2 flex gap-1">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleMoveGalleryImage(selectedGallery.id, image.id, 'up')}
+                                                                disabled={actualIndex === 0 || isSubmitting}
+                                                                className="flex h-7 w-7 items-center justify-center rounded-full border border-white/80 bg-white/90 text-xs font-bold text-brand-text-primary shadow-sm disabled:opacity-40"
+                                                                aria-label={`Geser foto ${actualIndex + 1} ke atas`}
+                                                            >
+                                                                ↑
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleMoveGalleryImage(selectedGallery.id, image.id, 'down')}
+                                                                disabled={actualIndex === selectedGallery.images.length - 1 || isSubmitting}
+                                                                className="flex h-7 w-7 items-center justify-center rounded-full border border-white/80 bg-white/90 text-xs font-bold text-brand-text-primary shadow-sm disabled:opacity-40"
+                                                                aria-label={`Geser foto ${actualIndex + 1} ke bawah`}
+                                                            >
+                                                                ↓
+                                                            </button>
+                                                        </div>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleDeleteGalleryImage(selectedGallery.id, image.id)}
+                                                            disabled={isSubmitting}
+                                                            className="absolute -right-1 -top-1 z-10 flex h-7 w-7 items-center justify-center rounded-full border border-red-200 bg-white text-sm font-bold text-red-600 shadow-md disabled:opacity-50"
+                                                            title="Hapus gambar"
+                                                            aria-label={`Hapus foto ${actualIndex + 1}`}
+                                                        >
+                                                            ×
+                                                        </button>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                        {selectedGallery.images.length > 6 && (
+                                            <button
+                                                type="button"
+                                                onClick={() => setIsAllPhotosOpen(open => !open)}
+                                                className="w-full rounded-xl border border-brand-accent/25 bg-brand-accent/5 px-3 py-2 text-sm font-semibold text-brand-accent"
+                                            >
+                                                {isAllPhotosOpen ? 'Tutup Semua Foto' : `Lihat Semua Foto (${selectedGallery.images.length})`}
+                                            </button>
+                                        )}
+                                    </>
+                                ) : (
+                                    <div className="rounded-xl border border-dashed border-brand-border/60 bg-brand-surface px-3 py-4 text-center text-xs text-brand-text-secondary">
+                                        Belum ada foto pada pricelist ini.
+                                    </div>
+                                )}
+                            </section>
+
+                            <section className="space-y-3 rounded-2xl border border-brand-border/50 bg-brand-surface/80 p-3 sm:p-4">
+                                <div className="flex items-center justify-between gap-3">
+                                    <div>
+                                        <h4 className="text-sm font-semibold text-brand-text-light">PDF Pricelist</h4>
+                                        <p className="mt-0.5 text-xs text-brand-text-secondary">Lampiran PDF untuk halaman publik.</p>
+                                    </div>
+                                    {selectedGallery.pdf_url && (
+                                        <a href={selectedGallery.pdf_url} target="_blank" rel="noopener noreferrer" className="text-xs font-medium text-brand-accent underline underline-offset-2">
+                                            Lihat PDF
+                                        </a>
+                                    )}
+                                </div>
+                                <label htmlFor="edit-pdf-display-name" className="block text-xs font-medium text-brand-text-secondary">
+                                    Nama PDF di Halaman Publik
+                                </label>
+                                <div className="flex items-center gap-2">
+                                    <input
+                                        id="edit-pdf-display-name"
+                                        type="text"
+                                        value={pdfDisplayName}
+                                        onChange={event => setPdfDisplayName(event.target.value)}
+                                        className="input-field min-w-0 flex-1"
+                                        placeholder="Nama PDF"
+                                    />
+                                    <input id="edit-pdf-upload" type="file" accept=".pdf,application/pdf" onChange={handlePdfFileSelect} className="hidden" />
+                                    <label htmlFor="edit-pdf-upload" className="inline-flex cursor-pointer items-center justify-center rounded-lg border border-brand-border bg-brand-surface px-3 py-2 text-xs font-semibold text-brand-text-light hover:border-brand-accent">
+                                        {selectedPdfFile ? 'Ganti PDF' : 'Pilih PDF'}
+                                    </label>
+                                </div>
+                                {selectedPdfFile && (
+                                    <div className="flex items-center justify-between gap-3 text-xs text-brand-text-secondary">
+                                        <span className="truncate">{selectedPdfFile.name}</span>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setSelectedPdfFile(null);
+                                                setPdfDisplayName(selectedGallery.pdf_name || 'Pricelist PDF');
+                                            }}
+                                            className="shrink-0 text-brand-danger hover:underline"
+                                        >
+                                            Hapus pilihan
+                                        </button>
+                                    </div>
+                                )}
+                                <button
+                                    type="button"
+                                    onClick={handleUploadPdf}
+                                    disabled={!selectedPdfFile || isSubmitting}
+                                    className="button-primary w-full !py-2.5 !text-sm font-semibold"
+                                >
+                                    {isSubmitting && selectedPdfFile ? 'Mengunggah PDF...' : 'Upload PDF'}
+                                </button>
+                            </section>
+                            <p className="text-xs text-brand-text-secondary">Maksimal 10 MB per gambar. Format: JPG, PNG, WebP.</p>
+                        </div>
+                    )}
+
                     <div className="flex gap-3 pt-6 border-t border-brand-border/50 sticky bottom-0 bg-brand-surface">
                         <button
                             type="button"
-                            onClick={() => setIsEditModalOpen(false)}
+                            onClick={() => {
+                                setEditImageFiles([]);
+                                setIsEditModalOpen(false);
+                            }}
+                            disabled={isSubmitting}
                             className="flex-1 button-secondary"
                         >
                             Batal
@@ -758,7 +1119,7 @@ const GalleryUpload: React.FC<GalleryUploadProps> = ({ userProfile, showNotifica
                             disabled={isSubmitting}
                             className="flex-1 button-primary"
                         >
-                            {isSubmitting ? 'Menyimpan...' : 'Simpan Perubahan'}
+                            {isUploadingDraftImages ? `Mengunggah foto ${draftImageUploadProgress}%` : isSubmitting ? 'Menyimpan...' : 'Simpan Perubahan'}
                         </button>
                     </div>
                 </form>

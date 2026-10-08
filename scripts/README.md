@@ -4,6 +4,28 @@ Kumpulan script untuk backup dan maintenance database Supabase.
 
 ## 📁 File Scripts
 
+### `compress-existing-images.mjs` (Supabase Storage)
+Recompress existing JPEG, PNG, and WebP objects in place. The default target is 100 KB per image and the default bucket is `gallery-images`. Object paths remain unchanged, so existing database URLs continue to work. GIFs, SVGs, and unsupported formats are skipped.
+
+The script runs in dry-run mode unless `--apply` is passed. Apply mode writes a timestamped copy of each original under `backups/storage-image-originals/` before replacing it. Keep the service-role key private and do not commit it.
+
+```powershell
+$env:VITE_SUPABASE_URL = "https://your-project.supabase.co"
+$env:SUPABASE_SERVICE_ROLE_KEY = "your-service-role-key"
+
+# Dry run only; it downloads and measures candidates without changing storage.
+npm run compress:storage-images
+
+# Apply only after reviewing the dry-run output.
+npm run compress:storage-images -- --apply
+
+# To include payment proofs, review first and then explicitly apply.
+npm run compress:storage-images -- --bucket all
+npm run compress:storage-images -- --bucket all --apply
+```
+
+Use `--max-size-kb 100`, `--max-dimension 1600`, or `--backup-dir <path>` to adjust the run. The script processes objects one at a time and reports any files that remain over target. It does not rewrite base64 images embedded directly in database JSON/text fields.
+
 ### `backup-to-sql.js` ⭐⭐ (RECOMMENDED - All-in-One)
 Script terbaik: Backup database dan langsung konversi ke format SQL.
 

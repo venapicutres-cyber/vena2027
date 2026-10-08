@@ -109,7 +109,12 @@ const EditPortfolioModal: React.FC<EditPortfolioModalProps> = ({ portfolio, onCl
           </div>
 
           {images.length > 0 ? (
-            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2 max-h-64 overflow-y-auto p-1">
+            <div
+              className="vendor-gallery-scroll grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2 max-h-[50vh] overflow-y-auto p-1"
+              role="region"
+              aria-label="Daftar foto portofolio"
+              tabIndex={0}
+            >
               {images.map((img) => (
                 <div key={img.id} className="relative aspect-square rounded-lg overflow-hidden group border border-brand-border">
                   <img src={img.url} alt="" className="w-full h-full object-cover" />
@@ -167,7 +172,10 @@ const VendorProfilePage: React.FC = () => {
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [newPortfolio, setNewPortfolio] = useState({ title: '', category: '', youtube_url: '' });
+  const [newPortfolioImages, setNewPortfolioImages] = useState<{ file: File; previewUrl: string }[]>([]);
   const [isCreatingPortfolio, setIsCreatingPortfolio] = useState(false);
+  const [isUploadingNewPortfolioImages, setIsUploadingNewPortfolioImages] = useState(false);
+  const [newPortfolioUploadProgress, setNewPortfolioUploadProgress] = useState(0);
   const [uploadingPortfolioId, setUploadingPortfolioId] = useState<string | null>(null);
   const [editingPortfolio, setEditingPortfolio] = useState<VendorPortfolio | null>(null);
   const [uploadingHeroSlot, setUploadingHeroSlot] = useState<number | null>(null);
@@ -315,9 +323,35 @@ const VendorProfilePage: React.FC = () => {
     setProfile(prev => ({ ...prev, faqs: (prev.faqs || []).filter(f => f.id !== id) }));
   };
 
+  const handleSelectNewPortfolioImages = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    setNewPortfolioImages(current => [
+      ...current,
+      ...files.map(file => ({ file, previewUrl: URL.createObjectURL(file) })),
+    ]);
+    e.target.value = '';
+  };
+
+  const handleRemoveNewPortfolioImage = (previewUrl: string) => {
+    URL.revokeObjectURL(previewUrl);
+    setNewPortfolioImages(current => current.filter(image => image.previewUrl !== previewUrl));
+  };
+
+  const clearNewPortfolioImages = () => {
+    newPortfolioImages.forEach(image => URL.revokeObjectURL(image.previewUrl));
+    setNewPortfolioImages([]);
+    setNewPortfolioUploadProgress(0);
+  };
+
+  const closeCreatePortfolioModal = () => {
+    clearNewPortfolioImages();
+    setIsCreateModalOpen(false);
+  };
+
   const handleCreatePortfolio = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newPortfolio.title.trim() || !newPortfolio.category.trim()) return;
+    const selectedFiles = newPortfolioImages.map(image => image.file);
     try {
       setIsCreatingPortfolio(true);
       const created = await createVendorPortfolio({
@@ -326,13 +360,36 @@ const VendorProfilePage: React.FC = () => {
         youtube_url: newPortfolio.youtube_url.trim(),
         images: []
       } as any);
-      setPortfolios([created, ...portfolios]);
+
+      setPortfolios(current => [created, ...current]);
+      if (selectedFiles.length > 0) {
+        setIsUploadingNewPortfolioImages(true);
+        setNewPortfolioUploadProgress(0);
+        try {
+          const uploadedImages = await uploadPortfolioImages(
+            created.id,
+            selectedFiles,
+            setNewPortfolioUploadProgress
+          );
+          setPortfolios(current => current.map(portfolio =>
+            portfolio.id === created.id ? { ...portfolio, images: uploadedImages } : portfolio
+          ));
+        } catch (err: any) {
+          closeCreatePortfolioModal();
+          setNewPortfolio({ title: '', category: '', youtube_url: '' });
+          alert(err?.message || 'Portofolio dibuat, tetapi gagal mengunggah foto. Anda dapat mengunggahnya melalui menu edit portofolio.');
+          return;
+        }
+      }
+
       setIsCreateModalOpen(false);
       setNewPortfolio({ title: '', category: '', youtube_url: '' });
+      clearNewPortfolioImages();
     } catch (err: any) {
       alert(err?.message || 'Gagal membuat portofolio');
     } finally {
       setIsCreatingPortfolio(false);
+      setIsUploadingNewPortfolioImages(false);
     }
   };
 
@@ -854,7 +911,13 @@ const VendorProfilePage: React.FC = () => {
       </div>
 
       {/* ─── Modal Tambah Portofolio ─── */}
-      <Modal isOpen={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} title="Tambah Portofolio Baru">
+      <Modal
+        isOpen={isCreateModalOpen}
+        onClose={() => {
+          if (!isCreatingPortfolio) closeCreatePortfolioModal();
+        }}
+        title="Tambah Portofolio Baru"
+      >
         <form onSubmit={handleCreatePortfolio} className="space-y-4 p-2">
           <div>
             <label className="block text-sm font-medium text-brand-text-secondary mb-1">Judul Acara</label>
@@ -874,10 +937,77 @@ const VendorProfilePage: React.FC = () => {
               className="w-full px-4 py-2 rounded-xl bg-brand-input border border-brand-border focus:ring-2 focus:ring-brand-accent outline-none"
               placeholder="Contoh: https://www.youtube.com/watch?v=..." />
           </div>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-sm font-medium text-brand-text-secondary">
+                Foto Portofolio ({newPortfolioImages.length})
+              </span>
+              <label className={`cursor-pointer inline-flex items-center gap-2 text-xs font-semibold px-3 py-2 bg-brand-input border border-brand-border rounded-lg hover:bg-brand-border transition-colors ${isCreatingPortfolio ? 'opacity-50 pointer-events-none' : ''}`}>
+                <UploadCloudIcon className="w-4 h-4" />
+                Pilih Foto
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  onChange={handleSelectNewPortfolioImages}
+                  disabled={isCreatingPortfolio}
+                />
+              </label>
+            </div>
+
+            {newPortfolioImages.length > 0 ? (
+              <div className="vendor-gallery-scroll grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2 max-h-48 overflow-y-auto p-1">
+                {newPortfolioImages.map(({ file, previewUrl }) => (
+                  <div key={previewUrl} className="relative aspect-square rounded-lg overflow-hidden group border border-brand-border">
+                    <img src={previewUrl} alt={file.name} className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveNewPortfolioImage(previewUrl)}
+                      disabled={isCreatingPortfolio}
+                      aria-label={`Hapus ${file.name} dari pilihan foto`}
+                      className="absolute top-1 right-1 p-1 bg-red-600 text-white rounded-md opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity disabled:opacity-50"
+                    >
+                      <XIcon className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-5 border-2 border-dashed border-brand-border rounded-xl text-brand-text-secondary text-sm">
+                Belum ada foto dipilih
+              </div>
+            )}
+
+            {isUploadingNewPortfolioImages && (
+              <div className="space-y-2" role="status" aria-live="polite">
+                <div className="flex items-center justify-between text-xs text-brand-text-secondary">
+                  <span className="inline-flex items-center gap-2">
+                    <span className="w-3.5 h-3.5 border-2 border-brand-accent border-t-transparent rounded-full animate-spin" aria-hidden="true" />
+                    Mengunggah foto...
+                  </span>
+                  <span>{newPortfolioUploadProgress}%</span>
+                </div>
+                <div
+                  className="h-2 overflow-hidden rounded-full bg-brand-input"
+                  role="progressbar"
+                  aria-label="Progres upload foto"
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-valuenow={newPortfolioUploadProgress}
+                >
+                  <div
+                    className="h-full bg-brand-accent transition-all duration-300"
+                    style={{ width: `${newPortfolioUploadProgress}%` }}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
           <div className="flex gap-3 pt-4 border-t border-brand-border">
-            <button type="button" onClick={() => setIsCreateModalOpen(false)} className="flex-1 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-xl font-semibold">Batal</button>
+            <button type="button" onClick={closeCreatePortfolioModal} disabled={isCreatingPortfolio} className="flex-1 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-xl font-semibold disabled:opacity-50">Batal</button>
             <button type="submit" disabled={isCreatingPortfolio} className="flex-1 px-4 py-2 bg-brand-accent text-white hover:bg-brand-accent/90 rounded-xl font-semibold disabled:opacity-50">
-              {isCreatingPortfolio ? 'Menyimpan...' : 'Buat Portofolio'}
+              {isUploadingNewPortfolioImages ? `Mengunggah ${newPortfolioUploadProgress}%` : isCreatingPortfolio ? 'Menyimpan...' : 'Buat Portofolio'}
             </button>
           </div>
         </form>

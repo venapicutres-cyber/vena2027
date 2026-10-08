@@ -137,7 +137,7 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
                             <div className="space-y-5">
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div className="space-y-2">
-                                        <label htmlFor="date" className="block text-xs font-semibold text-brand-text-secondary">Tanggal Acara Pernikahan</label>
+                                        <label htmlFor="date" className="block text-xs font-semibold text-brand-text-secondary">Tanggal Acara Pernikahan (Opsional)</label>
                                         <input type="date" id="date" name="date" value={formData.date || ''} onChange={onFormChange} className="input-field" required />
                                         <p className="hidden sm:block text-xs text-brand-text-secondary">Tanggal pelaksanaan Acara Pernikahan</p>
                                     </div>

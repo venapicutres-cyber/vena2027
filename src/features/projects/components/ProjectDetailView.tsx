@@ -33,7 +33,7 @@ const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({ project, profile,
                         </div>
                         <div className="flex justify-between py-2 border-b border-brand-border/50">
                             <span className="text-brand-text-secondary">Tanggal</span>
-                            <span className="font-bold text-brand-text-light">{new Date(project.date).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                            <span className="font-bold text-brand-text-light">{project.date ? new Date(project.date).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : 'Belum ditentukan'}</span>
                         </div>
                         <div className="flex justify-between py-2 border-b border-brand-border/50">
                             <span className="text-brand-text-secondary">Lokasi</span>

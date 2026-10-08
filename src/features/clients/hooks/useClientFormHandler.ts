@@ -273,7 +273,7 @@ export const useClientFormHandler = ({
         if (!ensureOnlineOrNotify(showNotification)) return;
 
         const selectedPackage = packages.find(p => p.id === formData.packageId);
-        if (!selectedPackage) {
+        if (!selectedPackage && !formData.projectId) {
             alert('Harap pilih Package layanan.');
             return;
         }
@@ -292,7 +292,7 @@ export const useClientFormHandler = ({
         const packagePriceChosen =
             formData.unitPrice !== undefined && !isNaN(Number(formData.unitPrice))
                 ? Number(formData.unitPrice)
-                : selectedPackage.price || 0;
+                : selectedPackage?.price || 0;
         const totalAddOnsPrice =
             selectedAddOns.reduce((sum, addon) => sum + addon.price, 0) +
             customItems.reduce((sum, item) => sum + item.price, 0);
@@ -358,7 +358,7 @@ export const useClientFormHandler = ({
                     clientName: formData.clientName,
                     clientId: clientId!,
                     projectType: formData.projectType,
-                    packageName: selectedPackage.name,
+                    packageName: selectedPackage?.name || 'Package Acara',
                     date: formData.date,
                     location: formData.location,
                     status: 'Dikonfirmasi',
@@ -603,7 +603,7 @@ export const useClientFormHandler = ({
                 return;
             }
 
-            if (!existingProject && (formData.projectName || formData.projectType || formData.date || formData.location || formData.packageId)) {
+            if (!existingProject && (formData.projectName || formData.projectType || formData.location || formData.packageId)) {
                 try {
                     const createdProject = await createProjectRow({
                         projectName: formData.projectName || `${formData.clientName} Wedding`,
@@ -611,7 +611,7 @@ export const useClientFormHandler = ({
                         clientId: updatedClientPayload.id,
                         projectType: formData.projectType || 'Wedding',
                         packageName: resolvedPackageName,
-                        date: formData.date || new Date().toISOString().split('T')[0],
+                        date: formData.date,
                         location: formData.location || '',
                         status: 'Dikonfirmasi',
                         totalCost: totalProject,
@@ -631,7 +631,13 @@ export const useClientFormHandler = ({
                     setSelectedProject(createdProject);
                     existingProject = createdProject;
                 } catch (err) {
-                    console.warn('Gagal membuat acara baru untuk pengantin yang belum punya acara:', err);
+                    console.error('Gagal membuat acara baru untuk pengantin yang belum punya acara:', err);
+                    showNotification(
+                        !navigator.onLine
+                            ? 'Harus online untuk melakukan perubahan'
+                            : 'Data pengantin tersimpan, tetapi acara gagal disimpan. Periksa koneksi database dan coba lagi.'
+                    );
+                    return;
                 }
             }
 
@@ -718,7 +724,7 @@ export const useClientFormHandler = ({
                     projectType: formData.projectType || existingProject.projectType,
                     packageName: resolvedPackageName,
                     packageId: resolvedPackageId,
-                    date: formData.date || existingProject.date,
+                    date: formData.date,
                     location: formData.location !== undefined ? formData.location : existingProject.location,
                     address: formData.address !== undefined ? formData.address : (existingProject.address || updatedClientPayload.address || ''),
                     status: existingProject.status,
@@ -771,11 +777,13 @@ export const useClientFormHandler = ({
                         setDocumentToView({ type: 'invoice', project: finalMergedProject });
                     }
                 } catch (err) {
-                    console.warn('Gagal update Acara Pernikahan di DB, fallback update lokal:', err);
-                    setProjects(prev => prev.map(p => (p.id === updatedProjectPayload.id ? updatedProjectPayload : p)));
-                    if (documentToView?.type === 'invoice' && documentToView.project.id === updatedProjectPayload.id) {
-                        setDocumentToView({ type: 'invoice', project: updatedProjectPayload });
-                    }
+                    console.error('Gagal update Acara Pernikahan di DB:', err);
+                    showNotification(
+                        !navigator.onLine
+                            ? 'Harus online untuk melakukan perubahan'
+                            : 'Data pengantin tersimpan, tetapi perubahan acara gagal disimpan. Coba lagi.'
+                    );
+                    return;
                 }
             }
 

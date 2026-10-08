@@ -280,18 +280,6 @@ export const SimplifiedDataProvider: React.FC<{ children: React.ReactNode }> = (
       .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, () => {
         void queryClient.invalidateQueries({ queryKey: ['notifications'] });
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'galleries' }, () => {
-        void queryClient.invalidateQueries();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'vendor_portfolios' }, () => {
-        void queryClient.invalidateQueries();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'vendor_profiles' }, () => {
-        void queryClient.invalidateQueries();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory_items' }, () => {
-        void queryClient.invalidateQueries();
-      })
       .subscribe((status, subscribeError) => {
         if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
           console.warn('[Realtime] Subscription unavailable; continuing without live sync.', { status, subscribeError });
