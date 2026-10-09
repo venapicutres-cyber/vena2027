@@ -117,8 +117,8 @@ function toRow(p: Partial<Profile>): any {
     ...(p.sopCategories !== undefined ? { sop_categories: p.sopCategories } : {}),
     ...(p.packageCategories !== undefined ? { package_categories: p.packageCategories } : {}),
     ...(p.termsAndConditions !== undefined ? { terms_and_conditions: p.termsAndConditions } : {}),
-    ...(p.logoBase64 !== undefined ? { logo_base64: p.logoBase64 } : {}),
-    ...(p.signatureBase64 !== undefined ? { signature_base64: p.signatureBase64 } : {}),
+    ...(p.logoBase64 !== undefined ? { logo_base64: p.logoBase64 || null } : {}),
+    ...(p.signatureBase64 !== undefined ? { signature_base64: p.signatureBase64 || null } : {}),
     ...(p.brandColor !== undefined ? { brand_color: p.brandColor } : {}),
     ...(p.publicPageConfig !== undefined ? {
       // Only write to JSONB column that actually exists in the current schema

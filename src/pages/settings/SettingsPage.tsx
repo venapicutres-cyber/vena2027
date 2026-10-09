@@ -1647,7 +1647,7 @@ const Settings: React.FC<SettingsProps> = ({ profile, setProfile, transactions, 
     };
 
     const handleRemoveLogo = () => {
-        setProfile(prev => ({ ...prev, logoBase64: undefined }));
+        setProfile(prev => ({ ...prev, logoBase64: '' as any }));
     };
 
     const handleSignatureChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1666,7 +1666,7 @@ const Settings: React.FC<SettingsProps> = ({ profile, setProfile, transactions, 
     };
 
     const handleRemoveSignature = () => {
-        setProfile(prev => ({ ...prev, signatureBase64: undefined }));
+        setProfile(prev => ({ ...prev, signatureBase64: '' as any }));
     };
 
     const handleBackgroundUpload = async (
@@ -2014,11 +2014,11 @@ const Settings: React.FC<SettingsProps> = ({ profile, setProfile, transactions, 
                                     <label htmlFor="logoUpload" className="text-xs md:text-sm font-medium text-brand-text-secondary">Logo Perusahaan (u/ Invoice)</label>
                                     <div className="mt-2 flex flex-col sm:flex-row items-start sm:items-center gap-3 md:gap-4">
                                         <div className="relative flex-shrink-0">
-                                            {profile.logoBase64 ?
+                                            {profile.logoBase64 && profile.logoBase64 !== '' ?
                                                 <img src={profile.logoBase64} alt="Logo preview" className="h-12 w-12 md:h-16 md:w-16 object-contain rounded-md bg-brand-bg p-1 border border-brand-border" />
                                                 : <div className="h-12 w-12 md:h-16 md:w-16 rounded-md bg-brand-bg border border-brand-border flex items-center justify-center text-[10px] md:text-xs text-brand-text-secondary">No Logo</div>
                                             }
-                                            {profile.logoBase64 && (
+                                            {profile.logoBase64 && profile.logoBase64 !== '' && (
                                                 <button
                                                     type="button"
                                                     onClick={handleRemoveLogo}
@@ -2043,11 +2043,11 @@ const Settings: React.FC<SettingsProps> = ({ profile, setProfile, transactions, 
                                     <label htmlFor="signatureUpload" className="text-xs md:text-sm font-medium text-brand-text-secondary">Tanda Tangan (TTD) - untuk Invoice, Kontrak, Slip Gaji</label>
                                     <div className="mt-2 flex flex-col sm:flex-row items-start sm:items-center gap-3 md:gap-4">
                                         <div className="relative flex-shrink-0">
-                                            {profile.signatureBase64 ?
+                                            {profile.signatureBase64 && profile.signatureBase64 !== '' ?
                                                 <img src={profile.signatureBase64} alt="TTD preview" className="h-16 w-24 md:h-20 md:w-32 object-contain rounded-md bg-white p-1 border border-brand-border" />
                                                 : <div className="h-16 w-24 md:h-20 md:w-32 rounded-md bg-brand-bg border border-brand-border flex items-center justify-center text-[10px] md:text-xs text-brand-text-secondary text-center px-1">Belum Upload TTD</div>
                                             }
-                                            {profile.signatureBase64 && (
+                                            {profile.signatureBase64 && profile.signatureBase64 !== '' && (
                                                 <button
                                                     type="button"
                                                     onClick={handleRemoveSignature}
