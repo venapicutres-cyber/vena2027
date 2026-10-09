@@ -1646,6 +1646,10 @@ const Settings: React.FC<SettingsProps> = ({ profile, setProfile, transactions, 
         }
     };
 
+    const handleRemoveLogo = () => {
+        setProfile(prev => ({ ...prev, logoBase64: undefined }));
+    };
+
     const handleSignatureChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
@@ -1659,6 +1663,10 @@ const Settings: React.FC<SettingsProps> = ({ profile, setProfile, transactions, 
             };
             reader.readAsDataURL(file);
         }
+    };
+
+    const handleRemoveSignature = () => {
+        setProfile(prev => ({ ...prev, signatureBase64: undefined }));
     };
 
     const handleBackgroundUpload = async (
@@ -2005,10 +2013,22 @@ const Settings: React.FC<SettingsProps> = ({ profile, setProfile, transactions, 
                                 <div>
                                     <label htmlFor="logoUpload" className="text-xs md:text-sm font-medium text-brand-text-secondary">Logo Perusahaan (u/ Invoice)</label>
                                     <div className="mt-2 flex flex-col sm:flex-row items-start sm:items-center gap-3 md:gap-4">
-                                        {profile.logoBase64 ?
-                                            <img src={profile.logoBase64} alt="Logo preview" className="h-12 w-12 md:h-16 md:w-16 object-contain rounded-md bg-brand-bg p-1 border border-brand-border flex-shrink-0" />
-                                            : <div className="h-12 w-12 md:h-16 md:w-16 rounded-md bg-brand-bg border border-brand-border flex items-center justify-center text-[10px] md:text-xs text-brand-text-secondary flex-shrink-0">No Logo</div>
-                                        }
+                                        <div className="relative flex-shrink-0">
+                                            {profile.logoBase64 ?
+                                                <img src={profile.logoBase64} alt="Logo preview" className="h-12 w-12 md:h-16 md:w-16 object-contain rounded-md bg-brand-bg p-1 border border-brand-border" />
+                                                : <div className="h-12 w-12 md:h-16 md:w-16 rounded-md bg-brand-bg border border-brand-border flex items-center justify-center text-[10px] md:text-xs text-brand-text-secondary">No Logo</div>
+                                            }
+                                            {profile.logoBase64 && (
+                                                <button
+                                                    type="button"
+                                                    onClick={handleRemoveLogo}
+                                                    title="Hapus Logo"
+                                                    className="absolute -top-1.5 -right-1.5 bg-red-500 hover:bg-red-600 text-white rounded-full w-5 h-5 flex items-center justify-center shadow transition-colors"
+                                                >
+                                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                                                </button>
+                                            )}
+                                        </div>
                                         <input
                                             id="logoUpload"
                                             type="file"
@@ -2022,10 +2042,22 @@ const Settings: React.FC<SettingsProps> = ({ profile, setProfile, transactions, 
                                 <div>
                                     <label htmlFor="signatureUpload" className="text-xs md:text-sm font-medium text-brand-text-secondary">Tanda Tangan (TTD) - untuk Invoice, Kontrak, Slip Gaji</label>
                                     <div className="mt-2 flex flex-col sm:flex-row items-start sm:items-center gap-3 md:gap-4">
-                                        {profile.signatureBase64 ?
-                                            <img src={profile.signatureBase64} alt="TTD preview" className="h-16 w-24 md:h-20 md:w-32 object-contain rounded-md bg-white p-1 border border-brand-border flex-shrink-0" />
-                                            : <div className="h-16 w-24 md:h-20 md:w-32 rounded-md bg-brand-bg border border-brand-border flex items-center justify-center text-[10px] md:text-xs text-brand-text-secondary flex-shrink-0 text-center px-1">Belum Upload TTD</div>
-                                        }
+                                        <div className="relative flex-shrink-0">
+                                            {profile.signatureBase64 ?
+                                                <img src={profile.signatureBase64} alt="TTD preview" className="h-16 w-24 md:h-20 md:w-32 object-contain rounded-md bg-white p-1 border border-brand-border" />
+                                                : <div className="h-16 w-24 md:h-20 md:w-32 rounded-md bg-brand-bg border border-brand-border flex items-center justify-center text-[10px] md:text-xs text-brand-text-secondary text-center px-1">Belum Upload TTD</div>
+                                            }
+                                            {profile.signatureBase64 && (
+                                                <button
+                                                    type="button"
+                                                    onClick={handleRemoveSignature}
+                                                    title="Hapus Tanda Tangan"
+                                                    className="absolute -top-1.5 -right-1.5 bg-red-500 hover:bg-red-600 text-white rounded-full w-5 h-5 flex items-center justify-center shadow transition-colors"
+                                                >
+                                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                                                </button>
+                                            )}
+                                        </div>
                                         <div className="flex flex-col gap-1">
                                             <input
                                                 id="signatureUpload"
