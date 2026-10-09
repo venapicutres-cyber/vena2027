@@ -174,9 +174,10 @@ export async function createClient(payload: Omit<Client, 'id'>): Promise<Client>
   const safePayload: Omit<Client, 'id'> = {
     ...payload,
     name: payload.name || 'Pengantin Baru',
-    email: payload.email || '',
+    email: (payload.email || '').trim(),
     phone: payload.phone || '',
     whatsapp: payload.whatsapp || payload.phone || '',
+    instagram: payload.instagram || undefined,
     since: payload.since || new Date().toISOString(),
     status: payload.status || ClientStatus.ACTIVE,
     clientType: payload.clientType || ClientType.DIRECT,

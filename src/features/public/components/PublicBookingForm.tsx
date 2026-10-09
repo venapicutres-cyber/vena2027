@@ -448,7 +448,7 @@ const PublicBookingForm: React.FC<PublicBookingFormProps> = ({
             // Create client in Supabase
             const createdClient = await createClient({
                 name: formData.clientName,
-                email: formData.email,
+                email: formData.email || '',
                 phone: formData.phone,
                 instagram: formData.instagram || undefined,
                 since: new Date().toISOString().split('T')[0],
@@ -926,11 +926,11 @@ Mohon konfirmasi untuk langkah selanjutnya. Terima kasih! 🙏`;
                                 </div>
                                 <div className="space-y-2">
                                     <label htmlFor="email" className="block text-xs text-black">Email (Opsional)</label>
-                                    <input type="email" id="email" name="email" value={formData.email} onChange={handleFormChange} className="w-full px-4 py-3 rounded-xl border border-public-border bg-white text-black focus:outline-none focus:border-black transition-all" placeholder="email@example.com" />
+                                    <input type="email" id="email" name="email" value={formData.email} onChange={handleFormChange} className="w-full px-4 py-3 rounded-xl border border-public-border bg-white text-black focus:outline-none focus:border-black transition-all" placeholder="email@example.com (opsional - bisa dikosongkan)" />
                                 </div>
                                 <div className="space-y-2">
                                     <label htmlFor="instagram" className="block text-xs text-black">Instagram (Opsional)</label>
-                                    <input type="text" id="instagram" name="instagram" value={formData.instagram} onChange={handleFormChange} className="w-full px-4 py-3 rounded-xl border border-public-border bg-white text-black focus:outline-none focus:border-black transition-all" placeholder="@username" />
+                                    <input type="text" id="instagram" name="instagram" value={formData.instagram} onChange={handleFormChange} className="w-full px-4 py-3 rounded-xl border border-public-border bg-white text-black focus:outline-none focus:border-black transition-all" placeholder="@username (opsional - bisa dikosongkan)" />
                                 </div>
 
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

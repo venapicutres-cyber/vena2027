@@ -329,7 +329,7 @@ export const useClientFormHandler = ({
                     const created = await createClientRow({
                         name: formData.clientName,
                         avatarUrl: formData.avatarUrl || undefined,
-                        email: formData.email?.trim() || '',
+                        email: (formData.email?.trim() || ''),
                         phone: formData.phone,
                         whatsapp: formData.whatsapp || formData.phone,
                         instagram: formData.instagram || undefined,
@@ -505,7 +505,7 @@ export const useClientFormHandler = ({
                 email: formData.email !== undefined ? formData.email.trim() : (existingClient.email || ''),
                 phone: formData.phone?.trim() || existingClient.phone,
                 whatsapp: formData.whatsapp?.trim() || formData.phone?.trim() || existingClient.whatsapp || existingClient.phone,
-                instagram: formData.instagram !== undefined ? formData.instagram.trim() : (existingClient.instagram || ''),
+                instagram: formData.instagram !== undefined ? (formData.instagram.trim() || undefined) : existingClient.instagram,
                 clientType: (formData.clientType as ClientType) || existingClient.clientType,
                 address: formData.address !== undefined ? formData.address : (existingClient.address || ''),
                 homeAddress: formData.homeAddress !== undefined ? formData.homeAddress : (existingClient.homeAddress || ''),
@@ -521,7 +521,7 @@ export const useClientFormHandler = ({
                 const updatedClientRowResult = await updateClientRow(existingClient.id, {
                     name: updatedClientPayload.name,
                     avatarUrl: updatedClientPayload.avatarUrl,
-                    email: updatedClientPayload.email,
+                    email: updatedClientPayload.email || '',
                     phone: updatedClientPayload.phone,
                     whatsapp: updatedClientPayload.whatsapp,
                     instagram: updatedClientPayload.instagram || undefined,

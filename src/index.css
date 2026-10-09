@@ -1034,7 +1034,7 @@ html {
 }
 
 @media (max-width: 767px) {
-  .button-primary,
+  .button-primary:not(.package-booking-button),
   .button-secondary {
     min-height: 25px;
     padding: 0.22rem 0.5rem;

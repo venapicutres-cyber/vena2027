@@ -68,12 +68,18 @@ function fromRow(row: any): Profile {
       introduction: row.public_page_config.introduction || '',
       galleryImages: row.public_page_config.galleryImages || [],
       backgroundImages: row.public_page_config.backgroundImages || {},
+      pricelistPdfUrl: row.public_page_config.pricelistPdfUrl || undefined,
+      weddingWorkflow: row.public_page_config.weddingWorkflow || undefined,
+      smallEventWorkflow: row.public_page_config.smallEventWorkflow || undefined,
     } : {
       template: (row.public_page_template || 'classic') as any,
       title: row.public_page_title || 'Weddfin',
       introduction: row.public_page_introduction || '',
       galleryImages: [],
       backgroundImages: {},
+      pricelistPdfUrl: undefined,
+      weddingWorkflow: undefined,
+      smallEventWorkflow: undefined,
     },
     packageShareTemplate: row.package_share_template || undefined,
     bookingFormTemplate: templateEnvelope
@@ -168,13 +174,13 @@ export async function upsertProfile(input: Partial<Profile> & { id?: string }): 
     if (input.expenseShareTemplate !== undefined) merged.expenseShareTemplate = input.expenseShareTemplate;
     if (input.portalShareTemplate !== undefined) merged.portalShareTemplate = input.portalShareTemplate;
     if (input.checklistTemplates !== undefined) merged.checklistTemplates = input.checklistTemplates;
-    
+
     bookingFormTemplatePayload = JSON.stringify(merged);
   }
 
-  const row = toRow({ 
-    ...input, 
-    bookingFormTemplate: bookingFormTemplatePayload ?? input.bookingFormTemplate, 
+  const row = toRow({
+    ...input,
+    bookingFormTemplate: bookingFormTemplatePayload ?? input.bookingFormTemplate,
   } as any);
   if (!input.id && !row.admin_user_id) {
     const { data, error } = await supabase.auth.getUser();
@@ -193,4 +199,11 @@ export async function upsertProfile(input: Partial<Profile> & { id?: string }): 
     if (error) throw error;
     return fromRow(data);
   }
+}
+
+export async function updateProfile(patch: Partial<Profile>): Promise<Profile> {
+  const profile = await getProfile();
+  if (!profile) throw new Error('Profile tidak ditemukan');
+
+  return upsertProfile({ ...profile, ...patch });
 }

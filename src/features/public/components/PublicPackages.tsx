@@ -11,6 +11,7 @@ import { createLead as createLeadRow } from '../../../services/leads';
 import { uploadDpProof } from '../../../services/storage';
 import { createTransaction } from '../../../services/transactions';
 import RupiahInput from '../../../shared/form/RupiahInput';
+import { Download, FileText } from 'lucide-react';
 
 const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
@@ -131,6 +132,8 @@ const PublicPackages: React.FC<PublicPackagesProps> = ({ userProfile: initialUse
     const [isTermsModalOpen, setIsTermsModalOpen] = useState(false);
     const [isWorkflowOpen, setIsWorkflowOpen] = useState(false);
     const [isTermsOpen, setIsTermsOpen] = useState(false);
+    const [isWeddingTimelineOpen, setIsWeddingTimelineOpen] = useState(false);
+    const [isSmallEventTimelineOpen, setIsSmallEventTimelineOpen] = useState(false);
 
     // Note: We avoid early returns before all hooks to keep hook order stable across renders.
 
@@ -197,7 +200,7 @@ const PublicPackages: React.FC<PublicPackagesProps> = ({ userProfile: initialUse
     };
 
     const formattedTerms = useMemo(() => {
-        if (!userProfile.termsAndConditions) return null;
+        if (!userProfile.termsAndConditions || userProfile.termsAndConditions.trim() === '') return null;
         return userProfile.termsAndConditions.split('\n').map((line, index) => {
             if (line.trim() === '') return <div key={index} className="h-4"></div>;
             const emojiRegex = /^(📜|📅|💰|📦|⏱|➕)\s/;
@@ -482,14 +485,50 @@ const PublicPackages: React.FC<PublicPackagesProps> = ({ userProfile: initialUse
             <div className={`template-wrapper template-${template} min-h-screen`}>
                 <style>{`
                 .template-wrapper { background-color: var(--public-bg); color: var(--public-text-primary); }
+
+                /* Cover image: rounded top corners matching card */
+                .template-wrapper .package-card-cover {
+                    border-radius: 1rem 1rem 0 0;
+                    overflow: hidden;
+                }
+
+                /* Booking button override — must beat app/index.css !important rules */
+                .template-wrapper button.package-booking-button.button-primary,
+                .template-wrapper .package-booking-button {
+                    font-size: 1rem !important;
+                    font-weight: 700 !important;
+                    min-height: 52px !important;
+                    max-height: none !important;
+                    height: auto !important;
+                    line-height: 1.4 !important;
+                    padding: 0.75rem 1rem !important;
+                    width: 100% !important;
+                    border-radius: 0.75rem !important;
+                }
+
                 @media (max-width: 640px) {
-                    .template-wrapper .package-card-cover { height: 144px !important; }
-                    .template-wrapper .package-card-title { font-size: 1rem !important; line-height: 1.35 !important; }
+                    .template-wrapper .package-card-cover { height: 160px !important; }
+                    .template-wrapper .package-card-title { font-size: 1.05rem !important; line-height: 1.35 !important; }
+                    .template-wrapper .package-desc-text { font-size: 0.9rem !important; line-height: 1.5 !important; }
                     .template-wrapper .package-duration-heading { font-size: 0.75rem !important; }
                     .template-wrapper .package-duration-option { min-height: 42px !important; padding: 0.5rem !important; }
                     .template-wrapper .package-duration-label { font-size: 0.6875rem !important; line-height: 1.25 !important; }
                     .template-wrapper .package-duration-price { font-size: 0.8125rem !important; line-height: 1.2 !important; }
-                    .template-wrapper .package-booking-button { min-height: 44px !important; height: 44px !important; padding: 0 0.875rem !important; font-size: 0.875rem !important; line-height: 1.25rem !important; }
+
+                    /* Mobile booking button — override semua rule kompak dari app/index.css */
+                    .template-wrapper button.package-booking-button.button-primary,
+                    .template-wrapper .package-booking-button {
+                        font-size: 1rem !important;
+                        font-weight: 700 !important;
+                        min-height: 52px !important;
+                        max-height: none !important;
+                        height: auto !important;
+                        line-height: 1.4 !important;
+                        padding: 0.75rem 0.5rem !important;
+                        width: 100% !important;
+                        border-radius: 0.75rem !important;
+                        letter-spacing: 0.01em !important;
+                    }
                 }
             `}</style>
                 <div className="w-full max-w-7xl mx-auto py-12 px-4">
@@ -533,43 +572,98 @@ const PublicPackages: React.FC<PublicPackagesProps> = ({ userProfile: initialUse
                     )}
 
                     <section className="mb-12 md:mb-16 grid md:grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8 widget-animate" style={{ animationDelay: '200ms' }}>
-                        <div className="bg-brand-surface rounded-2xl shadow-lg border border-brand-border p-3 md:p-4 sm:p-6">
-                            <button onClick={() => setIsWorkflowOpen(!isWorkflowOpen)} className="w-full flex justify-between items-center text-left">
-                                <h3 className="text-xl md:text-2xl font-bold text-gradient">Wedding Workflow</h3>
+                        <div
+                            className="bg-brand-surface rounded-2xl shadow-lg border border-brand-border p-3 md:p-4 sm:p-6 cursor-pointer hover:border-brand-accent/50 transition-all"
+                            onClick={() => {
+                                setIsWorkflowOpen(!isWorkflowOpen);
+                                setIsTermsOpen(false);
+                                // Otomatis buka kedua timeline saat workflow dibuka
+                                if (!isWorkflowOpen) {
+                                    setIsWeddingTimelineOpen(true);
+                                    setIsSmallEventTimelineOpen(true);
+                                }
+                            }}
+                        >
+                            <div className="flex justify-between items-center text-left">
+                                <h3 className="text-xl md:text-2xl font-bold text-gradient">{userProfile.publicPageConfig?.weddingWorkflow?.title || 'Wedding Workflow Weddfin'}</h3>
                                 <ChevronDownIcon className={`w-6 h-6 transition-transform text-brand-text-secondary ${isWorkflowOpen ? 'rotate-180' : ''}`} />
-                            </button>
+                            </div>
                             <div className={`transition-all duration-500 ease-in-out grid ${isWorkflowOpen ? 'grid-rows-[1fr] mt-4 opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
                                 <div className="overflow-hidden">
                                     <div className="space-y-4">
-                                        <div>
-                                            <h4 className="font-semibold text-brand-text-light">Wedding Timeline</h4>
-                                            <ul className="mt-2 space-y-1 text-sm text-brand-text-secondary list-disc list-inside">
-                                                <li>Konsep Acara Pernikahan / Awal → H-90</li>
-                                                <li>Pemilihan Vendor / Detail → H-60</li>
-                                                <li>Persiapan Final (Technical Meeting) → H-14</li>
-                                                <li>Pelaksanaan Acara Pernikahan → Hari H</li>
-                                                <li>Penyelesaian / Review Akhir → H+7</li>
-                                                <li>Serah Terima Dokumentasi / Laporan → H+30</li>
-                                            </ul>
+                                        <div className="border border-brand-border rounded-xl overflow-hidden">
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setIsWeddingTimelineOpen(!isWeddingTimelineOpen);
+                                                    setIsSmallEventTimelineOpen(false);
+                                                }}
+                                                className="w-full flex justify-between items-center text-left p-3 bg-brand-bg hover:bg-brand-bg/80 transition-colors"
+                                            >
+                                                <h4 className="font-semibold text-brand-text-light">Wedding Timeline</h4>
+                                                <ChevronDownIcon className={`w-5 h-5 transition-transform text-brand-text-secondary ${isWeddingTimelineOpen ? 'rotate-180' : ''}`} />
+                                            </button>
+                                            <div className={`transition-all duration-500 ease-in-out grid ${isWeddingTimelineOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
+                                                <div className="overflow-hidden">
+                                                    <ul className="p-3 space-y-1 text-sm text-brand-text-secondary list-disc list-inside">
+                                                        {(userProfile.publicPageConfig?.weddingWorkflow?.timeline || [
+                                                            'Konsep Acara Pernikahan / Awal → H-90',
+                                                            'Pemilihan Vendor / Detail → H-60',
+                                                            'Persiapan Final (Technical Meeting) → H-14',
+                                                            'Pelaksanaan Acara Pernikahan → Hari H',
+                                                            'Penyelesaian / Review Akhir → H+7',
+                                                            'Serah Terima Dokumentasi / Laporan → H+30'
+                                                        ]).map((item, index) => (
+                                                            <li key={index}>{item}</li>
+                                                        ))}
+                                                    </ul>
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <h4 className="font-semibold text-brand-text-light">Event / Acara Pernikahan Kecil Timeline</h4>
-                                            <ul className="mt-2 space-y-1 text-sm text-brand-text-secondary list-disc list-inside">
-                                                <li>Konsep / Kesepakatan Awal → H-30</li>
-                                                <li>Persiapan Final → H-7</li>
-                                                <li>Pelaksanaan Acara Pernikahan → Hari H</li>
-                                                <li>Penyelesaian Layanan / Laporan → H+14</li>
-                                            </ul>
+                                        <div className="border border-brand-border rounded-xl overflow-hidden">
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setIsSmallEventTimelineOpen(!isSmallEventTimelineOpen);
+                                                    setIsWeddingTimelineOpen(false);
+                                                }}
+                                                className="w-full flex justify-between items-center text-left p-3 bg-brand-bg hover:bg-brand-bg/80 transition-colors"
+                                            >
+                                                <h4 className="font-semibold text-brand-text-light">{userProfile.publicPageConfig?.smallEventWorkflow?.title || 'Event / Acara Pernikahan Kecil Timeline'}</h4>
+                                                <ChevronDownIcon className={`w-5 h-5 transition-transform text-brand-text-secondary ${isSmallEventTimelineOpen ? 'rotate-180' : ''}`} />
+                                            </button>
+                                            <div className={`transition-all duration-500 ease-in-out grid ${isSmallEventTimelineOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
+                                                <div className="overflow-hidden">
+                                                    <ul className="p-3 space-y-1 text-sm text-brand-text-secondary list-disc list-inside">
+                                                        {(userProfile.publicPageConfig?.smallEventWorkflow?.timeline || [
+                                                            'Konsep / Kesepakatan Awal → H-30',
+                                                            'Persiapan Final → H-7',
+                                                            'Pelaksanaan Acara Pernikahan → Hari H',
+                                                            'Penyelesaian Layanan / Laporan → H+14'
+                                                        ]).map((item, index) => (
+                                                            <li key={index}>{item}</li>
+                                                        ))}
+                                                    </ul>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                        <div className="bg-brand-surface rounded-2xl shadow-lg border border-brand-border p-3 md:p-4 sm:p-6">
-                            <button onClick={() => setIsTermsOpen(!isTermsOpen)} className="w-full flex justify-between items-center text-left">
+                        <div
+                            className="bg-brand-surface rounded-2xl shadow-lg border border-brand-border p-3 md:p-4 sm:p-6 cursor-pointer hover:border-brand-accent/50 transition-all"
+                            onClick={() => {
+                                setIsTermsOpen(!isTermsOpen);
+                                setIsWorkflowOpen(false); // Tutup workflow saat syarat ketentuan dibuka
+                                setIsWeddingTimelineOpen(false); // Tutup timeline
+                                setIsSmallEventTimelineOpen(false); // Tutup timeline
+                            }}
+                        >
+                            <div className="flex justify-between items-center text-left">
                                 <h3 className="text-xl md:text-2xl font-bold text-gradient">Syarat & Ketentuan</h3>
                                 <ChevronDownIcon className={`w-6 h-6 transition-transform text-brand-text-secondary ${isTermsOpen ? 'rotate-180' : ''}`} />
-                            </button>
+                            </div>
                             <div className={`transition-all duration-500 ease-in-out grid ${isTermsOpen ? 'grid-rows-[1fr] mt-4 opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
                                 <div className="overflow-hidden">
                                     <div className="max-h-80 overflow-y-auto pr-4 text-sm space-y-2">
@@ -601,7 +695,7 @@ const PublicPackages: React.FC<PublicPackagesProps> = ({ userProfile: initialUse
                                                     <div className="absolute -top-3 right-3 bg-yellow-400 text-yellow-900 text-xs font-bold px-3 py-1 rounded-full shadow-md z-10">Paling Populer</div>
                                                 )}
                                                 {pkg.coverImage ? (
-                                                    <div className="package-card-cover w-full h-36 sm:h-48 overflow-hidden">
+                                                    <div className="package-card-cover w-full h-36 sm:h-48 overflow-hidden rounded-t-2xl">
                                                         <img
                                                             src={pkg.coverImage}
                                                             alt={pkg.name}
@@ -625,7 +719,7 @@ const PublicPackages: React.FC<PublicPackagesProps> = ({ userProfile: initialUse
                                                         />
                                                     </div>
                                                 ) : (
-                                                    <div className="package-card-cover w-full h-36 sm:h-48 bg-brand-bg flex items-center justify-center">
+                                                    <div className="package-card-cover w-full h-36 sm:h-48 bg-brand-bg flex items-center justify-center rounded-t-2xl overflow-hidden">
                                                         <svg className="w-12 h-12 text-brand-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path>
                                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path>
@@ -649,7 +743,7 @@ const PublicPackages: React.FC<PublicPackagesProps> = ({ userProfile: initialUse
                                                     ) : (
                                                         <p className="text-xl md:text-2xl lg:text-3xl font-bold text-brand-text-light my-2 md:my-3">{formatCurrency(pkg.price)}</p>
                                                     )}
-                                                    <div className="space-y-1 text-xs md:text-sm text-brand-text-secondary flex-grow">
+                                                    <div className="package-desc-text space-y-1 text-xs md:text-sm text-brand-text-secondary flex-grow">
                                                         {/* Team lines separated */}
                                                         {pkg.photographers && (
                                                             <p className="leading-snug">{pkg.photographers}</p>
@@ -798,6 +892,27 @@ const PublicPackages: React.FC<PublicPackagesProps> = ({ userProfile: initialUse
                     <footer className="text-center py-8 border-t border-brand-border">
                         <p className="text-xs text-brand-text-secondary">&copy; {new Date().getFullYear()} {userProfile.companyName}.</p>
                     </footer>
+
+                    {/* Pricelist PDF Download Button */}
+                    {userProfile.publicPageConfig?.pricelistPdfUrl && (
+                        <div className="fixed bottom-6 right-6 z-40">
+                            <button
+                                onClick={() => {
+                                    const link = document.createElement('a');
+                                    link.href = userProfile.publicPageConfig.pricelistPdfUrl!;
+                                    link.download = 'pricelist.pdf';
+                                    document.body.appendChild(link);
+                                    link.click();
+                                    document.body.removeChild(link);
+                                }}
+                                className="flex items-center gap-2 px-4 py-3 bg-brand-accent hover:bg-brand-accent-hover text-white rounded-full shadow-lg transition-all duration-300 hover:scale-105"
+                                title="Download Pricelist PDF"
+                            >
+                                <Download className="w-5 h-5" />
+                                <span className="font-semibold text-sm">Download Pricelist</span>
+                            </button>
+                        </div>
+                    )}
                 </div>
 
                 <Modal isOpen={bookingModal.isOpen} onClose={handleCloseBookingModal} title={`Booking: ${bookingModal.pkg?.name}`} size="4xl">

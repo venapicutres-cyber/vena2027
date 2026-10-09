@@ -258,7 +258,7 @@ const ClientForm: React.FC<ClientFormProps> = ({
                             value={formData.email || ''}
                             onChange={handleFormChange}
                             className="w-full px-4 py-3 rounded-xl border border-[#EAEFF4] bg-white text-[#2A3547] focus:outline-none focus:ring-2 focus:ring-[#5D87FF] focus:border-transparent transition-all"
-                            placeholder="email@example.com (opsional)"
+                            placeholder="email@example.com (opsional - bisa dikosongkan)"
                         />
                     </div>
                     <div className="space-y-2">
@@ -270,7 +270,7 @@ const ClientForm: React.FC<ClientFormProps> = ({
                             value={formData.instagram}
                             onChange={handleFormChange}
                             className="w-full px-4 py-3 rounded-xl border border-[#EAEFF4] bg-white text-[#2A3547] focus:outline-none focus:ring-2 focus:ring-[#5D87FF] focus:border-transparent transition-all"
-                            placeholder="@username"
+                            placeholder="@username (opsional - bisa dikosongkan)"
                         />
                     </div>
 

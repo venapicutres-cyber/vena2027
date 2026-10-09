@@ -585,6 +585,15 @@ export interface PublicPageConfig {
     portalPengantin?: string;
     leadForm?: string;
   };
+  pricelistPdfUrl?: string; // URL untuk PDF pricelist yang di-upload
+  weddingWorkflow?: {
+    title: string;
+    timeline: string[];
+  };
+  smallEventWorkflow?: {
+    title: string;
+    timeline: string[];
+  };
 }
 
 export interface Profile {

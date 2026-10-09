@@ -475,7 +475,7 @@ a:focus-visible {
   }
 
   /* Smaller buttons on mobile */
-  .button-primary,
+  .button-primary:not(.package-booking-button),
   .button-secondary {
     font-size: 0.58rem !important;
     padding: 0.2rem 0.48rem !important;
@@ -1559,7 +1559,7 @@ a:focus-visible {
   }
 
   /* Even smaller buttons */
-  .button-primary,
+  .button-primary:not(.package-booking-button),
   .button-secondary {
     font-size: 0.58rem !important;
     padding: 0 7px !important;
@@ -2297,12 +2297,12 @@ td {
   .text-\[9px\], .text-\[8px\]   { font-size: 0.48rem !important; line-height: 1.15 !important; }
 
   /* 1. BUTTONS, ICON BUTTONS, TABS & FILTERS */
-  button:not(.checklist-item-toggle):not(.client-payment-toggle):not(.finance-add-pocket-card):not(.finance-add-account-card):not(.vendor-portfolio-card):not(.btn-box-read):not(.btn-box-edit):not(.btn-box-delete):not(.btn-box-wa):not(.btn-box-add):not(.rounded-full):not([class*="rounded-full"]):not(.bottom-nav button):not([class*="w-7"]):not([class*="w-8"]):not([class*="h-7"]):not([class*="h-8"]):not([class*="w-6"]):not([class*="h-6"]),
-  .button-primary,
+  button:not(.checklist-item-toggle):not(.client-payment-toggle):not(.finance-add-pocket-card):not(.finance-add-account-card):not(.vendor-portfolio-card):not(.btn-box-read):not(.btn-box-edit):not(.btn-box-delete):not(.btn-box-wa):not(.btn-box-add):not(.rounded-full):not([class*="rounded-full"]):not(.bottom-nav button):not([class*="w-7"]):not([class*="w-8"]):not([class*="h-7"]):not([class*="h-8"]):not([class*="w-6"]):not([class*="h-6"]):not(.package-booking-button),
+  .button-primary:not(.package-booking-button),
   .button-secondary,
   .button-danger,
   .button-success,
-  button.button-primary,
+  button.button-primary:not(.package-booking-button),
   button.button-secondary {
     min-height: 24px !important;
     height: auto !important;
@@ -2314,6 +2314,20 @@ td {
     letter-spacing: 0 !important;
     font-weight: 600 !important;
     gap: 3px !important;
+  }
+
+  /* Public package booking button — jangan dikecilkan */
+  .package-booking-button {
+    min-height: 52px !important;
+    max-height: none !important;
+    height: auto !important;
+    font-size: 1rem !important;
+    font-weight: 700 !important;
+    line-height: 1.4 !important;
+    padding: 0.75rem 0.5rem !important;
+    border-radius: 0.75rem !important;
+    letter-spacing: 0.01em !important;
+    width: 100% !important;
   }
 
   .vendor-public-profile #hero {
