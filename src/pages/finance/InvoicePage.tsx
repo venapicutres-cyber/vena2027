@@ -206,6 +206,7 @@ const InvoicePage: React.FC<InvoicePageProps> = ({
     isSignatureModalOpen,
     setIsSignatureModalOpen,
     handleSaveSignature,
+    handleRemoveSignature,
     handleShareDocumentWA,
     handleDownloadPDF,
   } = useClientDocumentActions({
@@ -232,6 +233,26 @@ const InvoicePage: React.FC<InvoicePageProps> = ({
         await updateTransactionInDb(txId, { vendorSignature: signatureDataUrl } as any);
       } catch (e) {
         console.warn('[InvoicePage] Failed to persist transaction signature:', e);
+      }
+    },
+    onRemoveInvoiceSignature: async (projectId) => {
+      setProjects((prev) =>
+        prev.map((p) => (p.id === projectId ? { ...p, invoiceSignature: undefined } : p)),
+      );
+      try {
+        await updateProjectInDb(projectId, { invoiceSignature: null } as any);
+      } catch (e) {
+        console.warn('[InvoicePage] Failed to remove invoice signature:', e);
+      }
+    },
+    onRemoveTransactionSignature: async (txId) => {
+      setTransactions((prev) =>
+        prev.map((t) => (t.id === txId ? { ...t, vendorSignature: undefined } : t)),
+      );
+      try {
+        await updateTransactionInDb(txId, { vendorSignature: null } as any);
+      } catch (e) {
+        console.warn('[InvoicePage] Failed to remove transaction signature:', e);
       }
     },
     setSharePreview,
@@ -349,6 +370,7 @@ const InvoicePage: React.FC<InvoicePageProps> = ({
         isSignatureModalOpen={isSignatureModalOpen}
         setIsSignatureModalOpen={setIsSignatureModalOpen}
         onSaveSignature={handleSaveSignature}
+        onRemoveSignature={handleRemoveSignature}
         onEditDocument={handleEditDocument}
         onDownloadPDF={handleDownloadPDF}
         onShareDocumentWA={handleShareDocumentWA}

@@ -18,6 +18,7 @@ interface ClientDocumentModalProps {
     isSignatureModalOpen: boolean;
     setIsSignatureModalOpen: (isOpen: boolean) => void;
     onSaveSignature: (sig: string) => void;
+    onRemoveSignature?: () => void;
     onEditDocument: () => void;
     onDownloadPDF: () => void;
     onShareDocumentWA: () => void;
@@ -35,6 +36,7 @@ export const ClientDocumentModal: React.FC<ClientDocumentModalProps> = ({
     isSignatureModalOpen,
     setIsSignatureModalOpen,
     onSaveSignature,
+    onRemoveSignature,
     onEditDocument,
     onDownloadPDF,
     onShareDocumentWA,
@@ -139,6 +141,19 @@ export const ClientDocumentModal: React.FC<ClientDocumentModalProps> = ({
                             className="client-document-action button-secondary p-2.5"
                         >
                             Tanda Tangani
+                        </button>
+                    )}
+                    {documentToView && hasSignature && onRemoveSignature && (
+                        <button
+                            type="button"
+                            onClick={() => {
+                                if (window.confirm('Hapus tanda tangan dari dokumen ini?')) {
+                                    onRemoveSignature();
+                                }
+                            }}
+                            className="client-document-action button-secondary p-2.5 text-red-500 border-red-300 hover:bg-red-50"
+                        >
+                            Hapus TTD
                         </button>
                     )}
                     <button

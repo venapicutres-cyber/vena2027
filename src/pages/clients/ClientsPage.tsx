@@ -33,7 +33,8 @@ import NewClientsChart from '../../features/clients/components/NewClientsChart';
 import { useClients } from '../../features/clients/hooks/useClients';
 import { ensureOnlineOrNotify } from '../../features/clients/utils/clientHelpers';
 import { exportClientsToCSV } from '../../features/clients/utils/clientExport';
-import { deleteProject as deleteProjectRow } from '../../services/projects';
+import { deleteProject as deleteProjectRow, updateProject as updateProjectInDb } from '../../services/projects';
+import { updateTransaction as updateTransactionInDb } from '../../services/transactions';
 import { toPublicNameSlug } from '../../utils/publicRouting';
 
 // Modular Components
@@ -181,6 +182,7 @@ export const Clients: React.FC<ClientsProps> = ({
         isSignatureModalOpen,
         setIsSignatureModalOpen,
         handleSaveSignature,
+        handleRemoveSignature,
         handleShareDocumentWA,
         handleDownloadPDF,
     } = useClientDocumentActions({
@@ -191,6 +193,26 @@ export const Clients: React.FC<ClientsProps> = ({
         showNotification,
         onSignInvoice,
         onSignTransaction,
+        onRemoveInvoiceSignature: async (projectId) => {
+            setProjects((prev) =>
+                prev.map((p) => (p.id === projectId ? { ...p, invoiceSignature: undefined } : p)),
+            );
+            try {
+                await updateProjectInDb(projectId, { invoiceSignature: null } as any);
+            } catch (e) {
+                console.warn('[ClientsPage] Failed to remove invoice signature:', e);
+            }
+        },
+        onRemoveTransactionSignature: async (txId) => {
+            setTransactions((prev) =>
+                prev.map((t) => (t.id === txId ? { ...t, vendorSignature: undefined } : t)),
+            );
+            try {
+                await updateTransactionInDb(txId, { vendorSignature: null } as any);
+            } catch (e) {
+                console.warn('[ClientsPage] Failed to remove transaction signature:', e);
+            }
+        },
         setSharePreview,
     });
 
@@ -593,6 +615,7 @@ export const Clients: React.FC<ClientsProps> = ({
                 isSignatureModalOpen={isSignatureModalOpen}
                 setIsSignatureModalOpen={setIsSignatureModalOpen}
                 onSaveSignature={handleSaveSignature}
+                onRemoveSignature={handleRemoveSignature}
                 onEditDocument={handleEditDocument}
                 onDownloadPDF={handleDownloadPDF}
                 onShareDocumentWA={handleShareDocumentWA}

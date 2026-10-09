@@ -19,6 +19,8 @@ interface UseClientDocumentActionsParams {
     showNotification: (msg: string) => void;
     onSignInvoice: (projectId: string, signatureDataUrl: string) => void;
     onSignTransaction: (transactionId: string, signatureDataUrl: string) => void;
+    onRemoveInvoiceSignature?: (projectId: string) => void;
+    onRemoveTransactionSignature?: (transactionId: string) => void;
     setSharePreview: (val: { title: string; message: string; phone?: string } | null) => void;
 }
 
@@ -30,6 +32,8 @@ export const useClientDocumentActions = ({
     showNotification,
     onSignInvoice,
     onSignTransaction,
+    onRemoveInvoiceSignature,
+    onRemoveTransactionSignature,
     setSharePreview,
 }: UseClientDocumentActionsParams) => {
     const [isSignatureModalOpen, setIsSignatureModalOpen] = useState(false);
@@ -41,6 +45,14 @@ export const useClientDocumentActions = ({
             onSignTransaction(documentToView.transaction.id, signatureDataUrl);
         }
         setIsSignatureModalOpen(false);
+    };
+
+    const handleRemoveSignature = () => {
+        if (documentToView?.type === 'invoice' && documentToView.project) {
+            onRemoveInvoiceSignature?.(documentToView.project.id);
+        } else if (documentToView?.type === 'receipt' && documentToView.transaction) {
+            onRemoveTransactionSignature?.(documentToView.transaction.id);
+        }
     };
 
     const getPdfOptions = (elementId: string, filename: string) => ({
@@ -188,6 +200,7 @@ export const useClientDocumentActions = ({
         isSignatureModalOpen,
         setIsSignatureModalOpen,
         handleSaveSignature,
+        handleRemoveSignature,
         handleShareDocumentWA,
         handleDownloadPDF,
     };
