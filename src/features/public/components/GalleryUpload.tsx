@@ -4,6 +4,7 @@ import { Profile, Gallery, REGIONS } from '../../../types';
 import Modal from '../../../shared/ui/Modal';
 import { UploadIcon, TrashIcon, LinkIcon, MapPinIcon, PlusIcon, FileTextIcon, CameraIcon } from '../../../constants';
 import { createGallery, listGalleries, uploadGalleryImages, deleteGallery, updateGallery, uploadCoverImage, uploadGalleryPdf, deleteGalleryImage, reorderGalleryImages } from '../../../services/galleries';
+import { getGalleryPublicRouteId } from '../../../utils/publicRouting';
 
 interface GalleryUploadProps {
     userProfile: Profile;
@@ -456,7 +457,8 @@ const GalleryUpload: React.FC<GalleryUploadProps> = ({ userProfile, showNotifica
     };
 
     const copyPublicLink = (gallery: Gallery) => {
-        const link = `${window.location.origin}/#/gallery/${gallery.public_id}`;
+        const routeId = getGalleryPublicRouteId(gallery, galleries);
+        const link = `${window.location.origin}/#/gallery/${routeId}`;
         navigator.clipboard.writeText(link);
         showNotification('Link publik berhasil disalin');
     };
@@ -693,7 +695,7 @@ const GalleryUpload: React.FC<GalleryUploadProps> = ({ userProfile, showNotifica
                                     {gallery.is_public && (
                                         <>
                                             <a
-                                                href={`/#/gallery/${gallery.public_id}`}
+                                                href={`/#/gallery/${getGalleryPublicRouteId(gallery, galleries)}`}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 className="button-secondary !w-9 !h-9 !p-0 text-brand-text-secondary hover:text-emerald-600 hover:border-emerald-300 hover:bg-emerald-50"

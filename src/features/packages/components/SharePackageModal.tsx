@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import Modal from '../../../shared/ui/Modal';
 import { Copy, Check, ExternalLink, Share2, MapPin } from 'lucide-react';
+import { buildPublicShareUrl } from '../../../utils/publicRouting';
 
 interface SharePackageModalProps {
     isOpen: boolean;
@@ -21,7 +22,7 @@ export const SharePackageModal: React.FC<SharePackageModalProps> = ({
         setTimeout(() => setCopiedIndex(null), 2000);
     };
 
-    const baseUrl = `${window.location.origin}${window.location.pathname}#/public-booking`;
+    const baseUrl = buildPublicShareUrl('booking');
 
     return (
         <Modal
@@ -86,7 +87,7 @@ export const SharePackageModal: React.FC<SharePackageModalProps> = ({
 
                     {/* Regional links */}
                     {unionRegions.map((r, idx) => {
-                        const regionUrl = `${baseUrl}?region=${r.value}`;
+                        const regionUrl = buildPublicShareUrl('booking', undefined, { query: { region: r.value } });
                         const isCopied = copiedIndex === idx;
 
                         return (

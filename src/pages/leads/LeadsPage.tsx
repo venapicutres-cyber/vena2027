@@ -20,6 +20,7 @@ import { createTransaction as createTransactionRow, updateCardBalance } from '..
 import { findCardIdByMeta } from '../../services/cards';
 import { upsertProfile } from '../../services/profile';
 import { listGalleries } from '../../services/galleries';
+import { buildPublicShareUrl, getGalleryPublicRouteId } from '../../utils/publicRouting';
 
 const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
@@ -583,9 +584,9 @@ export const Leads: React.FC<LeadsProps> = ({
     const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
     const activeLeadFilterCount = (sourceFilter !== 'all' ? 1 : 0) + (dateFrom ? 1 : 0) + (dateTo ? 1 : 0);
 
-    const publicLeadFormUrl = useMemo(() => `${window.location.origin}${window.location.pathname}#/public-lead-form`, []);
-    const publicBookingFormUrl = useMemo(() => `${window.location.origin}${window.location.pathname}#/public-booking`, []);
-    const publicPackagesUrl = useMemo(() => `${window.location.origin}${window.location.pathname}#/public-packages/${userProfile.id}`, [userProfile.id]);
+    const publicLeadFormUrl = useMemo(() => buildPublicShareUrl('lead'), []);
+    const publicBookingFormUrl = useMemo(() => buildPublicShareUrl('booking'), []);
+    const publicPackagesUrl = useMemo(() => buildPublicShareUrl('packages'), []);
 
     useEffect(() => {
         if (isShareModalOpen && typeof (window as any).QRCode !== 'undefined') {
@@ -1435,7 +1436,7 @@ const ShareMessageModal: React.FC<ShareMessageModalProps> = ({ type, lead, userP
     }, []);
 
     const selectedGallery = useMemo(() => galleries.find(g => g.id === selectedGalleryId) || null, [galleries, selectedGalleryId]);
-    const selectedGalleryLink = useMemo(() => selectedGallery ? `${window.location.origin}/#/gallery/${selectedGallery.public_id}` : '', [selectedGallery]);
+    const selectedGalleryLink = useMemo(() => selectedGallery ? `${window.location.origin}/#/gallery/${getGalleryPublicRouteId(selectedGallery, galleries)}` : '', [selectedGallery, galleries]);
 
     const handleShareToWhatsApp = () => {
         if (!lead.whatsapp) { showNotification('Nomor WhatsApp untuk Calon Pengantin ini tidak tersedia.'); return; }

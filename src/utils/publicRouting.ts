@@ -18,6 +18,54 @@ export function toPublicNameSlug(name: string): string {
     .replace(/^-|-$/g, '');
 }
 
+export function toGalleryPublicSlug(title: string): string {
+  return toPublicNameSlug(title).toLowerCase();
+}
+
+export function getGalleryPublicRouteId(
+  gallery: { id: string; public_id?: string | null; title: string },
+  galleries: readonly { id: string; public_id?: string | null; title: string }[] = []
+): string {
+  const slug = toGalleryPublicSlug(gallery.title);
+  const hasCollision = galleries.some(candidate =>
+    candidate.id !== gallery.id && (
+      candidate.id === slug ||
+      candidate.public_id === slug ||
+      toGalleryPublicSlug(candidate.title) === slug
+    )
+  );
+
+  return slug && !hasCollision ? slug : gallery.public_id || gallery.id;
+}
+
+export function getPackageShareIdentifier(
+  pkg: { id: string; name: string; region?: string | null },
+  packages: readonly { id: string; name: string; region?: string | null }[]
+): string {
+  const slug = toPublicNameSlug(pkg.name).toLowerCase();
+  const region = (pkg.region || '').trim().toLowerCase();
+  const hasCollision = packages.some(candidate =>
+    candidate.id !== pkg.id &&
+    (candidate.region || '').trim().toLowerCase() === region &&
+    toPublicNameSlug(candidate.name).toLowerCase() === slug
+  );
+
+  return slug && !hasCollision ? slug : pkg.id;
+}
+
+export function resolvePackageShareIdentifier<T extends { id: string; name: string }>(
+  identifier: string,
+  packages: readonly T[]
+): T | null {
+  const idMatch = packages.find(pkg => pkg.id === identifier);
+  if (idMatch) return idMatch;
+
+  const slugMatches = packages.filter(pkg =>
+    toPublicNameSlug(pkg.name).toLowerCase() === identifier.toLowerCase()
+  );
+  return slugMatches.length === 1 ? slugMatches[0] : null;
+}
+
 export function publicNameFromSlug(slug: string): string {
   return slug.trim().replace(/-and-/gi, ' & ').replace(/-/g, ' ').replace(/\s+/g, ' ').trim();
 }

@@ -26,6 +26,7 @@ import { PackageModal } from './components/PackageModal';
 import { DuplicatePackageModal } from './components/DuplicatePackageModal';
 import { SharePackageModal } from './components/SharePackageModal';
 import { PackageGuideModal } from './components/PackageGuideModal';
+import { buildPublicShareUrl, getPackageShareIdentifier } from '../../utils/publicRouting';
 
 import { 
     Package as PackageIcon, 
@@ -581,10 +582,12 @@ export const Packages: React.FC<PackagesProps> = ({
     };
 
     const handleShareSinglePackage = async (pkg: Package) => {
-        const baseUrl = `${window.location.origin}${window.location.pathname}#/public-booking`;
-        const shareUrl = pkg.region 
-            ? `${baseUrl}?region=${encodeURIComponent(pkg.region)}&package=${encodeURIComponent(pkg.id)}`
-            : `${baseUrl}?package=${encodeURIComponent(pkg.id)}`;
+        const shareUrl = buildPublicShareUrl('booking', undefined, {
+            query: {
+                ...(pkg.region ? { region: pkg.region } : {}),
+                package: getPackageShareIdentifier(pkg, packages),
+            },
+        });
 
         if (navigator.share) {
             try {

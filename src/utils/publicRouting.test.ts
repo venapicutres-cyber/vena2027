@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { publicNameFromSlug, publicNamePatternsFromSlug, toPublicNameSlug } from './publicRouting';
+import { getGalleryPublicRouteId, getPackageShareIdentifier, publicNameFromSlug, publicNamePatternsFromSlug, resolvePackageShareIdentifier, toGalleryPublicSlug, toPublicNameSlug } from './publicRouting';
 
 describe('public name slugs', () => {
   it('creates a readable slug without URL escape sequences', () => {
@@ -8,6 +8,38 @@ describe('public name slugs', () => {
     expect(slug).toBe('DYEA-and-HUSYAM');
     expect(slug).not.toMatch(/%20|%26/i);
     expect(publicNameFromSlug(slug)).toBe('DYEA & HUSYAM');
+  });
+
+  it('creates clean gallery links when the title slug is unique', () => {
+    const gallery = { id: 'gallery-id', public_id: 'price-list-vena-2026-banten-8ef5y', title: 'Price List Vena 2026 Banten' };
+
+    expect(toGalleryPublicSlug(gallery.title)).toBe('price-list-vena-2026-banten');
+    expect(getGalleryPublicRouteId(gallery, [gallery])).toBe('price-list-vena-2026-banten');
+  });
+
+  it('keeps the unique id when another gallery has the same slug', () => {
+    const gallery = { id: 'gallery-id', public_id: 'price-list-vena-2026-banten-8ef5y', title: 'Price List Vena 2026 Banten' };
+    const duplicate = { id: 'other-gallery', public_id: 'other-id', title: 'Price List Vena 2026 Banten' };
+
+    expect(getGalleryPublicRouteId(gallery, [gallery, duplicate])).toBe(gallery.public_id);
+  });
+
+  it('uses readable package identifiers and keeps IDs for duplicate names in one region', () => {
+    const pkg = { id: 'package-id', name: 'Paket Wedding Banten', region: 'banten' };
+    const duplicate = { id: 'other-package', name: 'Paket Wedding Banten', region: 'BANTEN' };
+    const otherRegion = { id: 'jakarta-package', name: 'Paket Wedding Banten', region: 'jakarta' };
+
+    expect(getPackageShareIdentifier(pkg, [pkg, otherRegion])).toBe('paket-wedding-banten');
+    expect(getPackageShareIdentifier(pkg, [pkg, duplicate])).toBe(pkg.id);
+  });
+
+  it('resolves new package slugs and legacy IDs without guessing among duplicates', () => {
+    const pkg = { id: 'package-id', name: 'Paket Wedding Banten' };
+    const duplicate = { id: 'other-package', name: 'Paket Wedding Banten' };
+
+    expect(resolvePackageShareIdentifier('paket-wedding-banten', [pkg])).toBe(pkg);
+    expect(resolvePackageShareIdentifier(pkg.id, [pkg, duplicate])).toBe(pkg);
+    expect(resolvePackageShareIdentifier('paket-wedding-banten', [pkg, duplicate])).toBeNull();
   });
 
   it('supports punctuation in names and distinguishes ampersands from the word and', () => {

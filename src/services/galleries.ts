@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabaseClient';
 import { compressImage } from './storage';
 import { Gallery, GalleryImage } from '../types';
+import { toPublicNameSlug } from '../utils/publicRouting';
 
 export const createGallery = async (galleryData: Omit<Gallery, 'id' | 'public_id' | 'created_at' | 'updated_at'>): Promise<Gallery> => {
     // Generate a public_id from title slug + random suffix
@@ -70,13 +71,29 @@ export const getPublicGallery = async (publicId: string): Promise<Gallery | null
         .maybeSingle();
 
     if (error || !data) {
-        // Fallback: check by id
-        const { data: byId } = await supabase
+        if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(publicId)) {
+            const { data: byId } = await supabase
+                .from('galleries')
+                .select('*')
+                .eq('id', publicId)
+                .maybeSingle();
+            if (byId) return byId;
+        }
+
+        const slug = toPublicNameSlug(publicId).toLowerCase();
+        if (!slug || slug !== publicId.toLowerCase()) return null;
+
+        const { data: candidates } = await supabase
             .from('galleries')
             .select('*')
-            .eq('id', publicId)
-            .maybeSingle();
-        return byId || null;
+            .eq('is_public', true)
+            .ilike('public_id', `${slug}-%`)
+            .limit(20);
+
+        const matches = (candidates || []).filter(gallery =>
+            new RegExp(`^${slug}-[a-z0-9]{5}$`, 'i').test(gallery.public_id)
+        );
+        return matches.length === 1 ? matches[0] : null;
     }
 
     return data;

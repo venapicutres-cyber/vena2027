@@ -10,6 +10,7 @@ import { createLead as createLeadRow, updateLead as updateLeadRow } from '../../
 import { uploadDpProof } from '../../../services/storage';
 import { createTransaction } from '../../../services/transactions';
 import RupiahInput from '../../../shared/form/RupiahInput';
+import { buildPublicShareUrl, resolvePackageShareIdentifier } from '../../../utils/publicRouting';
 
 const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
@@ -160,6 +161,23 @@ const PublicBookingForm: React.FC<PublicBookingFormProps> = ({
             });
         }
     }, [filteredPackages, selectedRegion]);
+
+    useEffect(() => {
+        if (filteredPackages.length === 0) return;
+
+        const hash = window.location.hash;
+        if (!hash.includes('?')) return;
+        const packageIdentifier = new URLSearchParams(hash.substring(hash.indexOf('?'))).get('package');
+        if (!packageIdentifier) return;
+
+        const matchedPackage = resolvePackageShareIdentifier(packageIdentifier, filteredPackages);
+        if (!matchedPackage) return;
+
+        setFormData(prev => prev.packageId === matchedPackage.id
+            ? prev
+            : { ...prev, packageId: matchedPackage.id, durationSelection: '', unitPrice: undefined }
+        );
+    }, [filteredPackages]);
 
     // Filter Add-Ons by selectedRegion (strict)
     const filteredAddOns = useMemo(() => {
@@ -671,7 +689,6 @@ Mohon konfirmasi untuk langkah selanjutnya. Terima kasih! 🙏`;
     }
     // Region gate: do not show all regions. Ask user to choose a region link first.
     if (!selectedRegion) {
-        const base = `${window.location.origin}${window.location.pathname}#/public-booking`;
         return (
             <div className="flex items-center justify-center min-h-screen p-3 md:p-4">
                 <div className="w-full max-w-lg p-6 md:p-8 text-center bg-public-surface rounded-2xl shadow-lg border border-public-border">
@@ -679,7 +696,7 @@ Mohon konfirmasi untuk langkah selanjutnya. Terima kasih! 🙏`;
                     <p className="mt-3 text-public-text-secondary text-xs md:text-sm">Untuk meminimalisir kesalahan, silakan pilih wilayah terlebih dahulu.</p>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-5">
                         {unionRegions.map(r => (
-                            <a key={r.value} className="button-primary text-center" href={`${base}?region=${r.value}`}>{r.label}</a>
+                            <a key={r.value} className="button-primary text-center" href={buildPublicShareUrl('booking', undefined, { query: { region: r.value } })}>{r.label}</a>
                         ))}
                     </div>
                 </div>
@@ -701,6 +718,15 @@ Mohon konfirmasi untuk langkah selanjutnya. Terima kasih! 🙏`;
                 .public-booking-form label { font-size: 12px !important; line-height: 1.4 !important; }
                 .public-booking-form p { font-size: 12px !important; line-height: 1.45 !important; }
                 .public-booking-form input:not([type="file"]), .public-booking-form select:not(.package-select) { font-size: 14px !important; height: 34px !important; min-height: 34px !important; padding: 0 12px !important; border-radius: 8px !important; }
+                .public-booking-form #promoCode,
+                .public-booking-form #dp {
+                    border: 1px solid #111 !important;
+                    font-weight: 600 !important;
+                }
+                .public-booking-form #promoCode:focus,
+                .public-booking-form #dp:focus {
+                    border-color: #000 !important;
+                }
                 .public-booking-form textarea { font-size: 14px !important; }
                 .public-booking-form input::placeholder, .public-booking-form textarea::placeholder { font-size: 13px !important; }
                 .public-booking-form h4 { font-size: 16px !important; line-height: 1.35 !important; }
@@ -723,7 +749,6 @@ Mohon konfirmasi untuk langkah selanjutnya. Terima kasih! 🙏`;
                         column-gap: 8px !important;
                         row-gap: 2px !important;
                     }
-                    #root .public-page-body .public-booking-form #packageId svg,
                     #root .public-page-body .public-booking-form .package-option-button svg {
                         width: 20px !important;
                         height: 20px !important;
@@ -767,8 +792,8 @@ Mohon konfirmasi untuk langkah selanjutnya. Terima kasih! 🙏`;
                         line-height: 1.3 !important;
                     }
                 }
-                .public-booking-form .booking-upload-box { box-sizing: border-box; width: 100%; min-width: 0; min-height: 176px; padding: 24px 20px; }
-                .public-booking-form .booking-upload-icon { width: 48px !important; height: 48px !important; }
+                .public-booking-form .booking-upload-box { box-sizing: border-box; width: 100%; min-width: 0; padding: 12px; }
+                .public-booking-form .booking-upload-icon { width: 40px !important; height: 40px !important; }
                 .public-booking-form .booking-upload-instruction { font-size: 14px !important; }
                 .public-booking-form .booking-upload-hint { font-size: 12px !important; }
                 .public-booking-form .booking-upload-selected { font-size: 13px !important; line-height: 1.4 !important; }
@@ -833,9 +858,18 @@ Mohon konfirmasi untuk langkah selanjutnya. Terima kasih! 🙏`;
                     }
                     .public-booking-form .booking-upload-box {
                         width: 100%;
-                        min-height: 144px;
                         margin: 8px 0 0;
-                        padding: 18px 12px;
+                        padding: 10px;
+                    }
+                    /* Prevent mobile browser scroll-jump to sr-only file input */
+                    .public-booking-form input[type="file"].sr-only {
+                        position: fixed !important;
+                        top: -9999px !important;
+                        left: -9999px !important;
+                        width: 1px !important;
+                        height: 1px !important;
+                        overflow: hidden !important;
+                        opacity: 0 !important;
                     }
                 }
                 @media (max-width: 768px) { .template-modern .form-container { grid-template-columns: 1fr; } }
@@ -940,8 +974,8 @@ Mohon konfirmasi untuk langkah selanjutnya. Terima kasih! 🙏`;
                                             Tidak ada package tersedia untuk wilayah ini.
                                         </p>
                                     ) : (
-                                        <div className="space-y-2" ref={packagePickerRef} onKeyDown={e => {
-                                            if (e.key === 'Escape') {
+                                        <div className="space-y-2" ref={packagePickerRef} onKeyDown={event => {
+                                            if (event.key === 'Escape') {
                                                 setIsPackagePickerOpen(false);
                                                 packagePickerTriggerRef.current?.focus();
                                             }
@@ -993,12 +1027,13 @@ Mohon konfirmasi untuk langkah selanjutnya. Terima kasih! 🙏`;
                                                     id="public-package-options"
                                                     role="group"
                                                     aria-label="Pilihan package"
-                                                    className="max-h-[min(60vh,24rem)] space-y-2 overflow-y-auto overscroll-contain rounded-xl border border-neutral-200 bg-neutral-50/70 p-1.5 sm:max-h-72 sm:p-2"
+                                                    className="space-y-2 rounded-xl border border-neutral-200 bg-neutral-50/70 p-1.5 sm:p-2"
                                                 >
                                                     {visiblePackageGroups.map(([category, categoryPackages], groupIndex) => (
                                                         <div key={category}>
                                                             {groupIndex > 0 && <div className="my-2.5 border-t border-neutral-300" aria-hidden="true" />}
                                                             <p className="px-1 pb-1.5 pt-1 text-[10px] font-bold uppercase tracking-wide text-neutral-950">{category}</p>
+                                                            <div className="grid grid-cols-1 gap-2">
                                                             {categoryPackages.map(pkg => {
                                                         const hasDurationOptions = !!pkg.durationOptions?.length;
                                                         const startingPrice = hasDurationOptions
@@ -1034,9 +1069,10 @@ Mohon konfirmasi untuk langkah selanjutnya. Terima kasih! 🙏`;
                                                         </button>
                                                     );
                                                             })}
+                                                            </div>
                                                         </div>
                                                     ))}
-                                                </div>
+                                            </div>
                                             )}
                                         </div>
                                     )}
@@ -1087,7 +1123,7 @@ Mohon konfirmasi untuk langkah selanjutnya. Terima kasih! 🙏`;
                                             <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
                                                 {pkg.durationOptions.map(opt => (
                                                     <label key={opt.label} className={`min-h-11 flex items-center justify-between border-b border-neutral-200 px-2 py-2.5 last:border-b-0 cursor-pointer transition-colors ${formData.durationSelection === opt.label
-                                                        ? 'border-l-2 border-l-black bg-neutral-100'
+                                                        ? 'border-l-2 border-l-black bg-neutral-200'
                                                         : 'hover:bg-neutral-50'
                                                         }`}>
                                                         <span className="duration-option-label text-sm font-medium">{opt.label}</span>
@@ -1104,13 +1140,13 @@ Mohon konfirmasi untuk langkah selanjutnya. Terima kasih! 🙏`;
                                 <div className="space-y-2">
                                     <label className="block text-xs font-semibold text-black">Add-On Lainnya (Opsional)</label>
                                     <div className="space-y-1">{filteredAddOns.length > 0 ? filteredAddOns.map(addon => (<label key={addon.id} className={`flex items-center justify-between border-b border-neutral-200 px-2 py-2 last:border-b-0 cursor-pointer transition-colors ${formData.selectedAddOnIds.includes(addon.id)
-                                        ? 'bg-neutral-100'
+                                        ? 'bg-neutral-200'
                                         : 'hover:bg-neutral-50'
                                         }`}><span className="text-sm text-public-text-primary font-medium">{addon.name}</span><div className="flex items-center gap-2"><span className="text-sm font-semibold text-black">{formatCurrency(addon.price)}</span><input type="checkbox" id={addon.id} name="addOns" checked={formData.selectedAddOnIds.includes(addon.id)} onChange={handleFormChange} className="h-4 w-4 text-black rounded focus:ring-neutral-900 flex-shrink-0" /></div></label>)) : <p className="text-xs text-public-text-secondary">Tidak ada add-on untuk wilayah ini.</p>}</div></div>
 
                                 <div className="space-y-2">
-                                    <label htmlFor="promoCode" className="block text-xs text-public-text-secondary">Kode Promo (Opsional)</label>
-                                    <input type="text" id="promoCode" name="promoCode" value={formData.promoCode} onChange={handleFormChange} className="w-full px-4 py-3 rounded-xl border border-public-border bg-white text-public-text-primary focus:outline-none focus:ring-2 focus:ring-public-accent focus:border-transparent transition-all" placeholder="Masukkan kode promo" />
+                                    <label htmlFor="promoCode" className="block text-xs font-semibold text-black">Kode Promo (Opsional)</label>
+                                    <input type="text" id="promoCode" name="promoCode" value={formData.promoCode} onChange={handleFormChange} className="w-full px-4 py-3 rounded-xl border border-black bg-white font-semibold text-public-text-primary focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-black transition-all" placeholder="Masukkan kode promo" />
                                     {!promoFeedback.message && <p className="text-xs text-public-text-secondary">Masukkan kode promo jika Anda memilikinya</p>}
                                     {promoFeedback.message && <p className={`text-xs ${promoFeedback.type === 'success' ? 'text-green-500' : 'text-red-500'}`}>{promoFeedback.message}</p>}
                                 </div>
@@ -1128,13 +1164,13 @@ Mohon konfirmasi untuk langkah selanjutnya. Terima kasih! 🙏`;
                                     <p className="font-semibold text-public-text-primary text-center py-2 bg-public-surface rounded-md border border-public-border">{userProfile.bankAccount}</p>
                                     <div className="grid grid-cols-1 gap-4">
                                         <div className="space-y-2">
-                                            <label htmlFor="dp" className="block text-xs text-public-text-secondary">Jumlah DP Ditransfer</label>
+                                            <label htmlFor="dp" className="block text-xs font-semibold text-black">Jumlah DP Ditransfer</label>
                                             <RupiahInput
                                                 id="dp"
                                                 name="dp"
                                                 value={String(formData.dp ?? '')}
                                                 onChange={(raw) => setFormData(prev => ({ ...prev, dp: raw }))}
-                                                className="w-full px-4 py-3 rounded-xl border border-public-border bg-white text-public-text-primary focus:outline-none focus:ring-2 focus:ring-public-accent focus:border-transparent transition-all text-right"
+                                                className="w-full px-4 py-3 rounded-xl border border-black bg-white font-semibold text-public-text-primary focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-black transition-all text-right"
                                                 placeholder="0"
                                             />
                                             <p className="text-xs text-public-text-secondary text-right">Saran DP (30%): {formatCurrency(suggestedDp)}</p>
@@ -1142,7 +1178,7 @@ Mohon konfirmasi untuk langkah selanjutnya. Terima kasih! 🙏`;
                                     </div>
                                     <div className="space-y-2 !mt-4">
                                         <label htmlFor="dpPaymentProof" className="block text-xs font-semibold text-black">Bukti Transfer DP (Opsional)</label>
-                                        <div className="booking-upload-box mt-2 flex justify-center rounded-2xl border-2 border-dashed border-neutral-400 bg-gradient-to-br from-neutral-50 to-white transition-colors hover:border-neutral-600">
+                                        <div className="booking-upload-box mt-2 flex justify-center rounded-2xl border-2 border-dashed border-black bg-gradient-to-br from-neutral-50 to-white transition-colors hover:border-neutral-900">
                                             {paymentProof ? (
                                                 <div className="flex w-full min-w-0 flex-col gap-3 sm:flex-row sm:items-center">
                                                     {paymentProofPreviewUrl ? (
@@ -1167,15 +1203,15 @@ Mohon konfirmasi untuk langkah selanjutnya. Terima kasih! 🙏`;
                                                 </div>
                                             ) : (
                                                 <div className="text-center">
-                                                    <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-neutral-100 text-black">
+                                                    <span className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl bg-neutral-100 text-black">
                                                         <UploadIcon className="booking-upload-icon h-6 w-6" />
                                                     </span>
-                                                    <p className="mt-3 text-sm font-bold text-public-text-primary">Unggah bukti transfer</p>
+                                                    <p className="mt-2 text-sm font-bold text-public-text-primary">Unggah bukti transfer</p>
                                                     <p className="booking-upload-instruction mt-1 text-xs text-public-text-secondary">Pilih gambar atau dokumen bukti pembayaran</p>
-                                                    <label htmlFor="dpPaymentProof" className="mt-3 inline-flex cursor-pointer items-center rounded-lg bg-black px-4 py-2 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-neutral-800">
+                                                    <label htmlFor="dpPaymentProof" className="mt-2 inline-flex cursor-pointer items-center rounded-lg bg-black px-4 py-2 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-neutral-800">
                                                         Pilih file
                                                     </label>
-                                                    <p className="booking-upload-hint mt-2 text-[11px] text-neutral-600">PNG, JPG, PDF · Maksimal 10 MB</p>
+                                                    <p className="booking-upload-hint mt-1 text-[11px] text-neutral-600">PNG, JPG, PDF · Maksimal 10 MB</p>
                                                 </div>
                                             )}
                                             <input id="dpPaymentProof" name="dpPaymentProof" type="file" className="sr-only" onChange={handleFileChange} accept="image/png, image/jpeg, image/jpg, application/pdf" />
