@@ -176,6 +176,12 @@ export async function upsertProfile(input: Partial<Profile> & { id?: string }): 
     ...input, 
     bookingFormTemplate: bookingFormTemplatePayload ?? input.bookingFormTemplate, 
   } as any);
+  if (!input.id && !row.admin_user_id) {
+    const { data, error } = await supabase.auth.getUser();
+    if (error) throw error;
+    if (!data.user) throw new Error('Sesi autentikasi tidak ditemukan.');
+    row.admin_user_id = data.user.id;
+  }
   if (input.id) {
     const { error } = await supabase.from(TABLE).update(row).eq('id', input.id);
     if (error) throw error;

@@ -1,6 +1,7 @@
-import React, { Suspense } from "react";
+import React, { Suspense, useEffect } from "react";
 import { AlertCircle, RefreshCw, Home } from "lucide-react";
 import { ViewType } from "./types";
+import { darkenColor, hexToHsl, lightenColor } from "./constants";
 import Sidebar from "./layouts/Sidebar";
 import Header from "./layouts/Header";
 import GlobalSearch from "./layouts/GlobalSearch";
@@ -29,6 +30,40 @@ function App() {
     appDataLoadedClientFeedback: !data.isLoading, // Simplified: loaded when not loading
     setClientFeedback: data.setClientFeedback, // Use the setter from simplified context
   });
+
+  useEffect(() => {
+    const rootStyle = document.documentElement.style;
+    const accentColor = auxData.profile.brandColor;
+    const variables = [
+      "--color-accent",
+      "--color-accent-hover",
+      "--color-accent-light",
+      "--color-accent-dark",
+      "--color-accent-hsl",
+      "--public-accent",
+      "--public-accent-hover",
+      "--public-accent-hsl",
+    ];
+
+    if (!accentColor || !/^#[0-9a-f]{6}$/i.test(accentColor)) {
+      variables.forEach(variable => rootStyle.removeProperty(variable));
+      return;
+    }
+
+    const hoverColor = darkenColor(accentColor, 10);
+    const lightColor = lightenColor(accentColor, 88);
+    const darkColor = darkenColor(accentColor, 20);
+    const accentHsl = hexToHsl(accentColor);
+
+    rootStyle.setProperty("--color-accent", accentColor);
+    rootStyle.setProperty("--color-accent-hover", hoverColor);
+    rootStyle.setProperty("--color-accent-light", lightColor);
+    rootStyle.setProperty("--color-accent-dark", darkColor);
+    rootStyle.setProperty("--color-accent-hsl", accentHsl);
+    rootStyle.setProperty("--public-accent", accentColor);
+    rootStyle.setProperty("--public-accent-hover", hoverColor);
+    rootStyle.setProperty("--public-accent-hsl", accentHsl);
+  }, [auxData.profile.brandColor]);
 
   // ─── Application Routing & Navigation ───────────────────────────────────
   const routing = useAppRouting({

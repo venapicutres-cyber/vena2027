@@ -403,6 +403,7 @@ export interface Project {
   packageName: string;
   packageId: string;
   addOns: AddOn[];
+  additionalPackages?: AddOn[];
   date: string;
   deadlineDate?: string;
   location: string;

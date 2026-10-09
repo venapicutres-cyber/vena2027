@@ -439,7 +439,7 @@ Berikut briefing untuk acara ini. Mohon diperhatikan:
 
 Terima kasih!`;
 
-export const DEFAULT_TERMS_AND_CONDITIONS = `1. Pembayaran DP minimal 50% dari total biaya untuk mengunci jadwal.
+export const DEFAULT_TERMS_AND_CONDITIONS = `1. Pembayaran DP minimal 50% dari total biaya untuk mengunci jadwal. Dp bersifat Non Refund.
 2. Pelunasan dilakukan sebelum atau pada hari H Acara Pernikahan.
 3. Revisi hasil kerja maksimal 2x (minor). Revisi mayor dikenakan biaya tambahan.
 4. Hasil kerja/Layanan diselesaikan dalam format yang disepakati, maksimal 14 hari setelah Acara Pernikahan atau sesuai perjanjian.

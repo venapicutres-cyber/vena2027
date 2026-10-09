@@ -26,6 +26,7 @@ const initialFormState = {
     location: '',
     date: '',
     packageId: '',
+    selectedAdditionalPackageIds: [] as string[],
     selectedAddOnIds: [] as string[],
     promoCode: '',
     dp: '',
@@ -69,6 +70,7 @@ const PublicBookingForm: React.FC<PublicBookingFormProps> = ({
     const [isLeadDataLoaded, setIsLeadDataLoaded] = useState(false);
     const [isPackagesLoading, setIsPackagesLoading] = useState(true);
     const [isPackagePickerOpen, setIsPackagePickerOpen] = useState(false);
+    const [isAdditionalPackagesOpen, setIsAdditionalPackagesOpen] = useState(false);
     const packagePickerRef = useRef<HTMLDivElement>(null);
     const packagePickerTriggerRef = useRef<HTMLButtonElement>(null);
 
@@ -252,7 +254,8 @@ const PublicBookingForm: React.FC<PublicBookingFormProps> = ({
                 const isMaxedOut = promoCode.maxUsage != null && promoCode.usageCount >= promoCode.maxUsage;
 
                 if (!isExpired && !isMaxedOut) {
-                    const totalBeforeDiscount = (filteredPackages.find(p => p.id === formData.packageId)?.price || 0) + filteredAddOns.filter(addon => formData.selectedAddOnIds.includes(addon.id)).reduce((sum, addon) => sum + addon.price, 0);
+                    const additionalPackagesPrice = filteredPackages.filter(p => formData.selectedAdditionalPackageIds?.includes(p.id)).reduce((sum, pkg) => sum + pkg.price, 0);
+                    const totalBeforeDiscount = (filteredPackages.find(p => p.id === formData.packageId)?.price || 0) + filteredAddOns.filter(addon => formData.selectedAddOnIds.includes(addon.id)).reduce((sum, addon) => sum + addon.price, 0) + additionalPackagesPrice;
                     const discountAmount = promoCode.discountType === 'percentage' ? (totalBeforeDiscount * promoCode.discountValue) / 100 : promoCode.discountValue;
                     const discountText = promoCode.discountType === 'percentage' ? `${promoCode.discountValue}%` : formatCurrency(promoCode.discountValue);
                     updatePromoFeedback('success', `Kode promo diterapkan! Diskon ${discountText}.`);
@@ -279,8 +282,12 @@ const PublicBookingForm: React.FC<PublicBookingFormProps> = ({
             .filter(addon => formData.selectedAddOnIds.includes(addon.id))
             .reduce((sum, addon) => sum + addon.price, 0);
 
+        const additionalPackagesPrice = filteredPackages
+            .filter(pkg => formData.selectedAdditionalPackageIds?.includes(pkg.id))
+            .reduce((sum, pkg) => sum + pkg.price, 0);
+
         const transportFee = Number(formData.transportCost) || 0;
-        const totalBeforeDiscount = packagePrice + addOnsPrice;
+        const totalBeforeDiscount = packagePrice + addOnsPrice + additionalPackagesPrice;
         let discountAmount = 0;
         let discountText = '';
 
@@ -432,6 +439,8 @@ const PublicBookingForm: React.FC<PublicBookingFormProps> = ({
                 }
             }
 
+            const selectedAdditionalPackages = filteredPackages.filter(p => formData.selectedAdditionalPackageIds?.includes(p.id));
+            const additionalPackageRecords = selectedAdditionalPackages.map(pkg => ({ id: pkg.id, name: pkg.name, price: pkg.price }));
             const selectedAddOns = (addOns || []).filter(addon => formData.selectedAddOnIds.includes(addon.id));
             const remainingPayment = totalProject - dpAmount;
             const transportFee = Number(formData.transportCost) || 0;
@@ -473,7 +482,8 @@ const PublicBookingForm: React.FC<PublicBookingFormProps> = ({
                 completedDigitalItems: [],
                 dpProofUrl: dpProofUrl || undefined,
                 address: formData.address || undefined,
-                addOns: selectedAddOns.map(a => ({ id: a.id, name: a.name, price: a.price })),
+                addOns: selectedAddOns.map(addon => ({ id: addon.id, name: addon.name, price: addon.price })),
+                additionalPackages: additionalPackageRecords,
             });
 
             if (leadId) {
@@ -1137,7 +1147,61 @@ Mohon konfirmasi untuk langkah selanjutnya. Terima kasih! 🙏`;
                                         </div>
                                     );
                                 })()}
-                                <div className="space-y-2">
+
+                                {filteredPackages.length > 1 && formData.packageId && (
+                                    <div className="mt-4 space-y-2">
+                                        <label className="block text-xs font-semibold text-black">Package Tambahan (Opsional)</label>
+                                        {!isAdditionalPackagesOpen ? (
+                                            <button 
+                                                type="button" 
+                                                onClick={() => setIsAdditionalPackagesOpen(true)}
+                                                className="w-full px-4 py-3 rounded-xl bg-black text-white font-semibold hover:bg-neutral-800 transition-all text-sm flex justify-center items-center gap-2"
+                                            >
+                                                Tampilkan Daftar Package Tambahan
+                                            </button>
+                                        ) : (
+                                            <div className="space-y-2">
+                                                {filteredPackages.filter(p => p.id !== formData.packageId).map(pkg => (
+                                                    <label key={pkg.id} className={`grid w-full min-w-0 grid-cols-[2.5rem_minmax(0,1fr)_auto] items-center gap-x-2 gap-y-0.5 rounded-lg border bg-white p-2 text-left shadow-sm transition hover:border-neutral-500 hover:bg-neutral-50 cursor-pointer sm:gap-3 sm:rounded-xl sm:p-2.5 ${formData.selectedAdditionalPackageIds?.includes(pkg.id) ? 'border-neutral-900 ring-1 ring-neutral-300' : 'border-neutral-200'
+                                                        }`}>
+                                                        {pkg.coverImage ? (
+                                                            <img src={pkg.coverImage} alt="" className="row-span-2 h-10 w-10 shrink-0 rounded-lg object-cover sm:row-span-1 sm:h-12 sm:w-12" />
+                                                        ) : (
+                                                            <span className="row-span-2 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-neutral-100 text-black sm:row-span-1 sm:h-12 sm:w-12">
+                                                                <PackageIcon className="h-5 w-5" aria-hidden="true" />
+                                                            </span>
+                                                        )}
+                                                        <span className="min-w-0 flex-1">
+                                                            <span className="block text-sm font-bold text-slate-900">{pkg.name}</span>
+                                                            <span className="block text-[11px] font-extrabold text-neutral-950 sm:text-xs">{formatCurrency(pkg.price)}</span>
+                                                        </span>
+                                                        <div className="col-start-3 row-span-2 flex items-center justify-end px-1">
+                                                            <input 
+                                                                type="checkbox" 
+                                                                name="additionalPackages" 
+                                                                checked={formData.selectedAdditionalPackageIds?.includes(pkg.id)} 
+                                                                onChange={(e) => {
+                                                                    const checked = e.target.checked;
+                                                                    setFormData(prev => ({
+                                                                        ...prev,
+                                                                        selectedAdditionalPackageIds: checked
+                                                                            ? [...(prev.selectedAdditionalPackageIds || []), pkg.id]
+                                                                            : (prev.selectedAdditionalPackageIds || []).filter(id => id !== pkg.id)
+                                                                    }));
+                                                                }} 
+                                                                className="h-4 w-4 text-black rounded focus:ring-neutral-900 flex-shrink-0 cursor-pointer pointer-events-none" 
+                                                            />
+                                                        </div>
+                                                    </label>
+                                                ))}
+                                                <div className="flex justify-center mt-2">
+                                                    <button type="button" onClick={() => setIsAdditionalPackagesOpen(false)} className="text-xs font-semibold text-public-text-secondary hover:underline">Tutup Daftar</button>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                                <div className="space-y-2 mt-4">
                                     <label className="block text-xs font-semibold text-black">Add-On Lainnya (Opsional)</label>
                                     <div className="space-y-1">{filteredAddOns.length > 0 ? filteredAddOns.map(addon => (<label key={addon.id} className={`flex items-center justify-between border-b border-neutral-200 px-2 py-2 last:border-b-0 cursor-pointer transition-colors ${formData.selectedAddOnIds.includes(addon.id)
                                         ? 'bg-neutral-200'

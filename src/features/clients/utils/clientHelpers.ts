@@ -58,6 +58,7 @@ export const initialFormState = {
     location: '',
     date: '',
     packageId: '',
+    selectedAdditionalPackageIds: [] as string[],
     selectedAddOnIds: [] as string[],
     customItems: [] as CustomFormItem[],
     durationSelection: '',

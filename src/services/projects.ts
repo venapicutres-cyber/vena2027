@@ -34,6 +34,7 @@ export type CreateProjectInput = {
   completedDigitalItems?: string[];
   dpProofUrl?: string;
   addOns: { id: string; name: string; price: number }[];
+  additionalPackages?: { id: string; name: string; price: number }[];
   durationSelection?: string;
   unitPrice?: number;
   address?: string;
@@ -58,6 +59,7 @@ export function normalizeProject(row: any): Project {
     packageName: row.package_name,
     packageId: row.package_id || '',
     addOns: [],
+    additionalPackages: Array.isArray(row.additional_packages) ? row.additional_packages : [],
     date: row.date || '',
     deadlineDate: row.deadline_date || undefined,
     location: row.location || '',
@@ -275,6 +277,7 @@ export async function updateProject(projectId: string, input: UpdateProjectInput
     ...(input.projectType !== undefined ? { project_type: input.projectType } : {}),
     ...(input.packageName !== undefined ? { package_name: input.packageName } : {}),
     ...(packageId !== undefined ? { package_id: validPackageId } : {}),
+    ...(input.additionalPackages !== undefined ? { additional_packages: input.additionalPackages } : {}),
     ...(input.date !== undefined ? { date: input.date || null } : {}),
     ...(input.deadlineDate !== undefined ? { deadline_date: input.deadlineDate || null } : {}),
     ...(input.location !== undefined ? { location: input.location ?? '' } : {}),
@@ -391,6 +394,7 @@ export async function createProject(input: CreateProjectInput): Promise<Project>
     project_type: input.projectType,
     package_name: input.packageName,
     package_id: packageId,
+    additional_packages: input.additionalPackages ?? [],
     date: input.date || null,
     deadline_date: (input as any).deadlineDate ?? null,
     location: input.location,

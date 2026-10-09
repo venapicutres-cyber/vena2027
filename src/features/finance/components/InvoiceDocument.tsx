@@ -47,11 +47,13 @@ const InvoiceDocument: React.FC<InvoiceDocumentProps> = ({
   };
 
   const safeAddOns = Array.isArray(project.addOns) ? project.addOns : [];
+  const safeAdditionalPackages = Array.isArray(project.additionalPackages) ? project.additionalPackages : [];
   const safeCustomCosts = Array.isArray(project.customCosts) ? project.customCosts : [];
   const subtotal = (Number(project.totalCost) || 0) + (Number(project.discountAmount) || 0);
   const addOnsTotal = safeAddOns.reduce((acc, curr) => acc + (Number(curr?.price) || 0), 0);
+  const additionalPackagesTotal = safeAdditionalPackages.reduce((acc, packageItem) => acc + (Number(packageItem?.price) || 0), 0);
   const customCostsTotal = safeCustomCosts.reduce((acc, curr) => acc + (Number(curr?.amount) || 0), 0);
-  const packagePrice = Math.max(0, subtotal - addOnsTotal - (Number(project.transportCost) || 0) - customCostsTotal);
+  const packagePrice = Math.max(0, subtotal - addOnsTotal - additionalPackagesTotal - (Number(project.transportCost) || 0) - customCostsTotal);
 
   // Find the package description
   const mainPackage = safePackages.find(p => p.id === project.packageId || p.name === project.packageName);
@@ -200,9 +202,38 @@ const InvoiceDocument: React.FC<InvoiceDocumentProps> = ({
                 </td>
                 <td className="px-1.5 py-1 sm:px-3 sm:py-2 text-right font-bold text-slate-800 text-[8px] sm:text-[12px] whitespace-nowrap print:text-black align-top">{formatCurrency(packagePrice)}</td>
               </tr>
+              {safeAdditionalPackages.map((packageItem, idx) => {
+                const additionalPackage = safePackages.find(item => item.id === packageItem.id || item.name === packageItem.name);
+                const deliverables = [
+                  ...(additionalPackage?.digitalItems || []),
+                  ...(additionalPackage?.physicalItems || []).map(item => item.name),
+                ].filter(Boolean);
+
+                return (
+                  <tr key={packageItem.id || `additional-package-${idx}`} className="align-top bg-white">
+                    <td className="px-1.5 py-1 sm:px-3 sm:py-2 text-center text-slate-800 font-medium border-r border-black align-top">{2 + idx}</td>
+                    <td className="px-1.5 py-1 sm:px-3 sm:py-2 border-r border-black align-top">
+                      <div className="invoice-desc-box m-0 p-0 block">
+                        <p className="invoice-item-title invoice-item-title-main font-bold text-slate-800 text-[8.5px] sm:text-[13px] print:text-black m-0 p-0">{packageItem.name || additionalPackage?.name}</p>
+                        {deliverables.length > 0 && (
+                          <div className="mt-0.5 sm:mt-1 space-y-0 sm:space-y-0.5">
+                            {deliverables.map((item, itemIndex) => (
+                              <p key={`${packageItem.id}-${itemIndex}`} className="invoice-item-sub text-[7px] sm:text-[10px] text-slate-500 leading-tight flex items-start gap-1">
+                                <span className="shrink-0">•</span>
+                                <span>{item}</span>
+                              </p>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-1.5 py-1 sm:px-3 sm:py-2 text-right font-medium text-slate-800 text-[8px] sm:text-[12px] whitespace-nowrap print:text-black align-top">{formatCurrency(Number(packageItem.price) || 0)}</td>
+                  </tr>
+                );
+              })}
               {safeAddOns.map((addon, idx) => (
                 <tr key={addon.id || idx} className="align-top bg-white">
-                  <td className="px-1.5 py-1 sm:px-3 sm:py-2 text-center text-slate-800 font-medium border-r border-black align-top">{2 + idx}</td>
+                  <td className="px-1.5 py-1 sm:px-3 sm:py-2 text-center text-slate-800 font-medium border-r border-black align-top">{2 + safeAdditionalPackages.length + idx}</td>
                   <td className="px-1.5 py-1 sm:px-3 sm:py-2 border-r border-black align-top">
                     <div className="invoice-desc-box m-0 p-0 block">
                       <p className="invoice-item-title font-medium text-slate-800 text-[8px] sm:text-[12px] print:text-black m-0 p-0">{addon.name}</p>
@@ -214,7 +245,7 @@ const InvoiceDocument: React.FC<InvoiceDocumentProps> = ({
               ))}
               {project.transportCost && Number(project.transportCost) > 0 && (
                 <tr className="align-top bg-white">
-                  <td className="px-1.5 py-1 sm:px-3 sm:py-2 text-center text-slate-800 font-medium border-r border-black align-top">{safeAddOns.length + 2}</td>
+                  <td className="px-1.5 py-1 sm:px-3 sm:py-2 text-center text-slate-800 font-medium border-r border-black align-top">{safeAdditionalPackages.length + safeAddOns.length + 2}</td>
                   <td className="px-1.5 py-1 sm:px-3 sm:py-2 border-r border-black align-top">
                     <div className="invoice-desc-box m-0 p-0 block">
                       <p className="invoice-item-title font-medium text-slate-800 text-[8px] sm:text-[12px] print:text-black m-0 p-0">Biaya Transport</p>
@@ -226,7 +257,7 @@ const InvoiceDocument: React.FC<InvoiceDocumentProps> = ({
               )}
               {safeCustomCosts.map((cost, idx) => {
                 const transportOffset = (project.transportCost && Number(project.transportCost) > 0) ? 1 : 0;
-                const rowNo = 2 + safeAddOns.length + transportOffset + idx;
+                const rowNo = 2 + safeAdditionalPackages.length + safeAddOns.length + transportOffset + idx;
                 return (
                   <tr key={cost.id || idx} className="align-top bg-white">
                     <td className="px-1.5 py-1 sm:px-3 sm:py-2 text-center text-slate-800 font-medium border-r border-black align-top">{rowNo}</td>

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Eye, EyeOff, Copy, Monitor, UploadCloud, LoaderCircle } from 'lucide-react';
 import { Profile, Transaction, Project, User, ViewType, ProjectStatusConfig, SubStatusConfig, Package, ChatTemplate, ChecklistTemplate } from '../../types';
 
@@ -7,6 +7,7 @@ import ToggleSwitch from '../../shared/ui/ToggleSwitch';
 import CategoryManager from './components/CategoryManager';
 import { PencilIcon, PlusIcon, Trash2Icon, KeyIcon, UsersIcon, ListIcon, FolderKanbanIcon, FileTextIcon, SettingsIcon, MessageSquareIcon, RefreshCwIcon, NAV_ITEMS, DEFAULT_INCOME_CATEGORIES, DEFAULT_EXPENSE_CATEGORIES, DEFAULT_PROJECT_TYPES, DEFAULT_EVENT_TYPES, DEFAULT_PACKAGE_CATEGORIES, DEFAULT_PROJECT_STATUS_SUGGESTIONS, DEFAULT_BRIEFING_TEMPLATE, DEFAULT_TERMS_AND_CONDITIONS, DEFAULT_PACKAGE_SHARE_TEMPLATE, DEFAULT_BOOKING_FORM_TEMPLATE, CHAT_TEMPLATES, DEFAULT_BILLING_TEMPLATES, DEFAULT_INVOICE_SHARE_TEMPLATE, DEFAULT_RECEIPT_SHARE_TEMPLATE, DEFAULT_EXPENSE_SHARE_TEMPLATE, DEFAULT_PORTAL_SHARE_TEMPLATE } from '../../constants';
 import { upsertProfile } from '../../services/profile';
+import { updatePackage } from '../../services/packages';
 import { uploadGalleryImage } from '../../services/storage';
 import { listUsers, createUser, updateUser, deleteUser } from '../../services/users';
 import { validateTemplate, processTemplate } from '../../services/chatTemplatesOffline';
@@ -1044,10 +1045,14 @@ interface SettingsProps {
     transactions: Transaction[];
     projects: Project[];
     packages: Package[];
+    setPackages: React.Dispatch<React.SetStateAction<Package[]>>;
     users: User[]; // This will now be pre-filtered by App.tsx
     setUsers: React.Dispatch<React.SetStateAction<User[]>>; // This updates the global user list
     currentUser: User | null;
 }
+
+type SettingsCategoryKey = 'incomeCategories' | 'expenseCategories' | 'projectTypes' | 'eventTypes' | 'packageCategories';
+type SettingsCategoryDrafts = Partial<Record<SettingsCategoryKey, string[]>>;
 
 interface TemplateEditorProps {
     id: string;
@@ -1056,9 +1061,7 @@ interface TemplateEditorProps {
     rows: number;
     defaultValue: string;
     helper?: React.ReactNode;
-    onChange: (event: React.ChangeEvent<HTMLTextAreaElement>) => void;
-    onUseExample: () => void;
-    onSave: () => void;
+    onSave: (value: string) => void;
     isSaving: boolean;
 }
 
@@ -1069,23 +1072,18 @@ const TemplateEditor: React.FC<TemplateEditorProps> = ({
     rows,
     defaultValue,
     helper,
-    onChange,
-    onUseExample,
     onSave,
     isSaving,
 }) => {
     const [isEditing, setIsEditing] = useState(false);
-    const textareaRef = useRef<HTMLTextAreaElement>(null);
+    const [draft, setDraft] = useState(value);
     const savedValue = value.trim();
     const previewSource = savedValue || defaultValue.trim();
     const previewLine = previewSource.split(/\r?\n/).find(line => line.trim()) || 'Belum ada isi template';
     const preview = savedValue ? previewLine : `Belum diatur. Contoh: ${previewLine}`;
 
     useEffect(() => {
-        const textarea = textareaRef.current;
-        if (!isEditing || !textarea) return;
-        textarea.style.height = 'auto';
-        textarea.style.height = `${textarea.scrollHeight}px`;
+        if (!isEditing) setDraft(value);
     }, [isEditing, value]);
 
     return (
@@ -1111,11 +1109,10 @@ const TemplateEditor: React.FC<TemplateEditorProps> = ({
                 <div className="mt-3 border-t border-brand-border/70 pt-3">
                     <div className="input-group !mt-0">
                         <textarea
-                            ref={textareaRef}
                             id={id}
                             name={id}
-                            value={value}
-                            onChange={onChange}
+                            value={draft}
+                            onChange={event => setDraft(event.target.value)}
                             className="input-field"
                             placeholder=" "
                             rows={rows}
@@ -1123,14 +1120,14 @@ const TemplateEditor: React.FC<TemplateEditorProps> = ({
                         <label htmlFor={id} className="input-label">{label}</label>
                     </div>
                     {helper && <p className="mt-1 text-xs text-brand-text-secondary">{helper}</p>}
-                    <button type="button" onClick={onUseExample} className="mt-2 text-xs text-brand-accent hover:underline">
+                    <button type="button" onClick={() => setDraft(defaultValue)} className="mt-2 text-xs text-brand-accent hover:underline">
                         + Gunakan contoh
                     </button>
                     <div className="mt-3 flex justify-end">
                         <button
                             type="button"
-                            disabled={isSaving}
-                            onClick={onSave}
+                            disabled={isSaving || draft === value}
+                            onClick={() => onSave(draft)}
                             className="button-primary inline-flex min-w-24 items-center justify-center px-4 py-2 text-xs font-semibold"
                         >
                             {isSaving ? 'Menyimpan...' : savedValue ? 'Update' : 'Simpan'}
@@ -1425,7 +1422,7 @@ const ChecklistTemplateSettings: React.FC<{
     );
 };
 
-const Settings: React.FC<SettingsProps> = ({ profile, setProfile, transactions, projects, packages, users, setUsers, currentUser }) => {
+const Settings: React.FC<SettingsProps> = ({ profile, setProfile, transactions, projects, packages, setPackages, users, setUsers, currentUser }) => {
     const [activeTab, setActiveTab] = useState('profile');
     const [showSuccess, setShowSuccess] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
@@ -1434,7 +1431,6 @@ const Settings: React.FC<SettingsProps> = ({ profile, setProfile, transactions, 
     const [usersLoadAttempted, setUsersLoadAttempted] = useState(false);
     const [usersLoadError, setUsersLoadError] = useState('');
     const [uploadingBackground, setUploadingBackground] = useState<'clientDetail' | 'eventDetail' | 'bookingForm' | 'portalPengantin' | 'leadForm' | null>(null);
-    const [didInitProjectStatuses, setDidInitProjectStatuses] = useState(false);
 
     type TemplateSettingKey =
         | 'termsAndConditions'
@@ -1445,13 +1441,13 @@ const Settings: React.FC<SettingsProps> = ({ profile, setProfile, transactions, 
         | 'expenseShareTemplate'
         | 'portalShareTemplate';
 
-    const handleTemplateSave = async (key: TemplateSettingKey) => {
+    const handleTemplateSave = async (key: TemplateSettingKey, value: string) => {
         if (isSaving) return;
         setIsSaving(true);
         setSaveError('');
         try {
-            const updated = await upsertProfile({ id: profile.id, [key]: profile[key] } as Partial<Profile> & { id: string });
-            setProfile(current => ({ ...current, [key]: updated[key] }));
+            await upsertProfile({ id: profile.id, [key]: value } as Partial<Profile> & { id: string });
+            setProfile(current => ({ ...current, [key]: value }));
             setShowSuccess(true);
             setTimeout(() => setShowSuccess(false), 3000);
         } catch (err: any) {
@@ -1505,6 +1501,117 @@ const Settings: React.FC<SettingsProps> = ({ profile, setProfile, transactions, 
     const [editingEventType, setEditingEventType] = useState<string | null>(null);
     const [packageCategoryInput, setPackageCategoryInput] = useState('');
     const [editingPackageCategory, setEditingPackageCategory] = useState<string | null>(null);
+    const [categoryDrafts, setCategoryDrafts] = useState<SettingsCategoryDrafts>({});
+    const [categorySavingKey, setCategorySavingKey] = useState<SettingsCategoryKey | null>(null);
+    const [packageCategoryRenames, setPackageCategoryRenames] = useState<Record<string, string>>({});
+
+    const getPersistedCategoryValues = (key: SettingsCategoryKey) => {
+        const profileValues = profile[key] ?? [];
+        if (key !== 'packageCategories') return profileValues;
+        return Array.from(new Set([...profileValues, ...packages.map(pkg => pkg.category).filter(Boolean)])).sort();
+    };
+
+    const getCategoryValues = (key: SettingsCategoryKey) => categoryDrafts[key] ?? getPersistedCategoryValues(key);
+
+    const stageCategoryValues = (key: SettingsCategoryKey, values: string[]) => {
+        const persistedValues = getPersistedCategoryValues(key);
+        const isUnchanged = values.length === persistedValues.length && values.every((value, index) => value === persistedValues[index]);
+        setCategoryDrafts(previous => {
+            const next = { ...previous };
+            if (isUnchanged) delete next[key];
+            else next[key] = values;
+            return next;
+        });
+    };
+
+    const categoryHasChanges = (key: SettingsCategoryKey) => categoryDrafts[key] !== undefined;
+
+    const saveCategoryChanges = async (key: SettingsCategoryKey) => {
+        if (!profile.id || !categoryHasChanges(key)) return;
+        const values = getCategoryValues(key);
+        setCategorySavingKey(key);
+        try {
+            if (key === 'packageCategories') {
+                const affectedPackages = packages.filter(pkg => packageCategoryRenames[pkg.category]);
+                const results = await Promise.allSettled(affectedPackages.map(pkg =>
+                    updatePackage(pkg.id, { category: packageCategoryRenames[pkg.category] }),
+                ));
+                const updatedPackages = results.flatMap(result => result.status === 'fulfilled' ? [result.value] : []);
+                if (updatedPackages.length > 0) {
+                    const updatedById = new Map(updatedPackages.map(pkg => [pkg.id, pkg]));
+                    setPackages(current => current.map(pkg => updatedById.get(pkg.id) ?? pkg));
+                }
+                const failures = results.filter(result => result.status === 'rejected');
+                if (failures.length > 0) {
+                    throw new Error(`${failures.length} paket gagal diperbarui. Draft kategori tetap disimpan agar dapat dicoba lagi.`);
+                }
+            }
+            const updated = await upsertProfile({ id: profile.id, [key]: values } as Partial<Profile> & { id: string });
+            setProfile(current => ({ ...current, [key]: (updated[key] as string[] | undefined) ?? values }));
+            setCategoryDrafts(previous => {
+                const next = { ...previous };
+                delete next[key];
+                return next;
+            });
+            if (key === 'packageCategories') setPackageCategoryRenames({});
+        } catch (error: any) {
+            console.error(`[Settings] Save ${key} failed:`, error);
+            alert('Gagal menyimpan kategori: ' + (error?.message || 'Coba lagi.'));
+        } finally {
+            setCategorySavingKey(null);
+        }
+    };
+
+    const stageCategoryInput = (
+        key: SettingsCategoryKey,
+        input: string,
+        editingValue: string | null,
+        setInput: React.Dispatch<React.SetStateAction<string>>,
+        setEditingValue: React.Dispatch<React.SetStateAction<string | null>>,
+        duplicateMessage: string,
+    ): boolean => {
+        const value = input.trim();
+        if (!value) return false;
+        const current = getCategoryValues(key);
+        if (editingValue !== null) {
+            if (value !== editingValue && current.includes(value)) {
+                alert(duplicateMessage);
+                return false;
+            }
+            stageCategoryValues(key, current.map(item => item === editingValue ? value : item).sort());
+            setEditingValue(null);
+        } else {
+            if (current.includes(value)) {
+                alert(duplicateMessage);
+                return false;
+            }
+            stageCategoryValues(key, [...current, value].sort());
+        }
+        setInput('');
+        return true;
+    };
+
+    const stageCategoryDelete = (
+        key: SettingsCategoryKey,
+        value: string,
+        isInUse: boolean,
+        inUseMessage: string,
+        confirmMessage: string,
+    ) => {
+        if (isInUse) {
+            alert(inUseMessage);
+            return;
+        }
+        if (window.confirm(confirmMessage)) {
+            stageCategoryValues(key, getCategoryValues(key).filter(item => item !== value));
+        }
+    };
+
+    const stageSuggestedCategories = (key: SettingsCategoryKey, suggested: string[]) => {
+        const current = getCategoryValues(key);
+        const missing = suggested.filter(value => !current.includes(value));
+        if (missing.length > 0) stageCategoryValues(key, [...current, ...missing].sort());
+    };
 
     // State for user management
     const [isUserModalOpen, setIsUserModalOpen] = useState(false);
@@ -1757,233 +1864,84 @@ const Settings: React.FC<SettingsProps> = ({ profile, setProfile, transactions, 
 
     // --- Category Management Handlers ---
     const handleAddOrUpdateIncomeCategory = async () => {
-        if (!incomeCategoryInput.trim()) return;
-        const newCategory = incomeCategoryInput.trim();
-        const categories = profile.incomeCategories || [];
-
-        let newCategories: string[];
-        if (editingIncomeCategory) { // Update
-            if (newCategory !== editingIncomeCategory && categories.includes(newCategory)) {
-                alert('Kategori ini sudah ada.'); return;
-            }
-            newCategories = categories.map(c => c === editingIncomeCategory ? newCategory : c).sort();
-            setEditingIncomeCategory(null);
-        } else { // Add
-            if (categories.includes(newCategory)) {
-                alert('Kategori ini sudah ada.'); return;
-            }
-            newCategories = [...categories, newCategory].sort();
-        }
-
-        try {
-            const updated = await upsertProfile({ id: profile.id, incomeCategories: newCategories });
-            setProfile(updated);
-            setIncomeCategoryInput('');
-        } catch (err: any) {
-            console.error('[Settings] Save income category failed:', err);
-            alert('Gagal menyimpan kategori: ' + (err?.message || 'Coba lagi.'));
-        }
+        stageCategoryInput('incomeCategories', incomeCategoryInput, editingIncomeCategory, setIncomeCategoryInput, setEditingIncomeCategory, 'Kategori ini sudah ada.');
     };
 
     const handleEditIncomeCategory = (category: string) => { setEditingIncomeCategory(category); setIncomeCategoryInput(category); };
-    const handleDeleteIncomeCategory = async (category: string) => {
-        const isCategoryInUse = transactions.some(t => t.category === category && t.type === 'Pemasukan');
-        if (isCategoryInUse) {
-            alert(`Kategori "${category}" tidak dapat dihapus karena sedang digunakan dalam transaksi.`); return;
-        }
-        if (window.confirm(`Yakin ingin menghapus kategori "${category}"?`)) {
-            const newCategories = (profile.incomeCategories || []).filter(c => c !== category);
-            try {
-                const updated = await upsertProfile({ id: profile.id, incomeCategories: newCategories });
-                setProfile(updated);
-            } catch (err: any) {
-                console.error('[Settings] Delete income category failed:', err);
-                alert('Gagal menghapus kategori: ' + (err?.message || 'Coba lagi.'));
-            }
-        }
-    };
+    const handleDeleteIncomeCategory = (category: string) => stageCategoryDelete(
+        'incomeCategories',
+        category,
+        transactions.some(transaction => transaction.category === category && transaction.type === 'Pemasukan'),
+        `Kategori "${category}" tidak dapat dihapus karena sedang digunakan dalam transaksi.`,
+        `Yakin ingin menghapus kategori "${category}"?`,
+    );
 
     const handleAddOrUpdateExpenseCategory = async () => {
-        if (!expenseCategoryInput.trim()) return;
-        const newCategory = expenseCategoryInput.trim();
-        const categories = profile.expenseCategories || [];
-
-        let newCategories: string[];
-        if (editingExpenseCategory) {
-            if (newCategory !== editingExpenseCategory && categories.includes(newCategory)) {
-                alert('Kategori ini sudah ada.'); return;
-            }
-            newCategories = categories.map(c => c === editingExpenseCategory ? newCategory : c).sort();
-            setEditingExpenseCategory(null);
-        } else {
-            if (categories.includes(newCategory)) {
-                alert('Kategori ini sudah ada.'); return;
-            }
-            newCategories = [...categories, newCategory].sort();
-        }
-
-        try {
-            const updated = await upsertProfile({ id: profile.id, expenseCategories: newCategories });
-            setProfile(updated);
-            setExpenseCategoryInput('');
-        } catch (err: any) {
-            console.error('[Settings] Save expense category failed:', err);
-            alert('Gagal menyimpan kategori: ' + (err?.message || 'Coba lagi.'));
-        }
+        stageCategoryInput('expenseCategories', expenseCategoryInput, editingExpenseCategory, setExpenseCategoryInput, setEditingExpenseCategory, 'Kategori ini sudah ada.');
     };
 
     const handleEditExpenseCategory = (category: string) => { setEditingExpenseCategory(category); setExpenseCategoryInput(category); };
-    const handleDeleteExpenseCategory = async (category: string) => {
-        const isCategoryInUse = transactions.some(t => t.category === category && t.type === 'Pengeluaran');
-        if (isCategoryInUse) {
-            alert(`Kategori "${category}" tidak dapat dihapus karena sedang digunakan dalam transaksi.`); return;
-        }
-        if (window.confirm(`Yakin ingin menghapus kategori "${category}"?`)) {
-            const newCategories = (profile.expenseCategories || []).filter(c => c !== category);
-            try {
-                const updated = await upsertProfile({ id: profile.id, expenseCategories: newCategories });
-                setProfile(updated);
-            } catch (err: any) {
-                console.error('[Settings] Delete expense category failed:', err);
-                alert('Gagal menghapus kategori: ' + (err?.message || 'Coba lagi.'));
-            }
-        }
-    };
+    const handleDeleteExpenseCategory = (category: string) => stageCategoryDelete(
+        'expenseCategories',
+        category,
+        transactions.some(transaction => transaction.category === category && transaction.type === 'Pengeluaran'),
+        `Kategori "${category}" tidak dapat dihapus karena sedang digunakan dalam transaksi.`,
+        `Yakin ingin menghapus kategori "${category}"?`,
+    );
 
     const handleAddOrUpdateProjectType = async () => {
-        if (!projectTypeInput.trim()) return;
-        const newType = projectTypeInput.trim();
-        const types = profile.projectTypes || [];
-        let newTypes: string[];
-        if (editingProjectType) {
-            if (newType !== editingProjectType && types.includes(newType)) { alert('Jenis Acara Pernikahan ini sudah ada.'); return; }
-            newTypes = types.map(t => t === editingProjectType ? newType : t).sort();
-        } else {
-            if (types.includes(newType)) { alert('Jenis Acara Pernikahan ini sudah ada.'); return; }
-            newTypes = [...types, newType].sort();
-        }
-        try {
-            const updated = await upsertProfile({ id: profile.id, projectTypes: newTypes } as any);
-            setProfile(updated);
-            setEditingProjectType(null);
-            setProjectTypeInput('');
-        } catch (err: any) {
-            console.error('[Settings] Save project type failed:', err);
-            alert('Gagal menyimpan jenis Acara Pernikahan: ' + (err?.message || 'Coba lagi.'));
-        }
+        stageCategoryInput('projectTypes', projectTypeInput, editingProjectType, setProjectTypeInput, setEditingProjectType, 'Jenis Acara Pernikahan ini sudah ada.');
     };
 
     const handleEditProjectType = (type: string) => { setEditingProjectType(type); setProjectTypeInput(type); };
-    const handleDeleteProjectType = async (type: string) => {
-        const isTypeInUse = projects.some(p => p.projectType === type);
-        if (isTypeInUse) { alert(`Jenis Acara Pernikahan "${type}" tidak dapat dihapus karena sedang digunakan.`); return; }
-        if (window.confirm(`Yakin ingin menghapus jenis Acara Pernikahan "${type}"?`)) {
-            const newTypes = (profile.projectTypes || []).filter(t => t !== type);
-            try {
-                const updated = await upsertProfile({ id: profile.id, projectTypes: newTypes } as any);
-                setProfile(updated);
-            } catch (err: any) {
-                console.error('[Settings] Delete project type failed:', err);
-                alert('Gagal menghapus jenis Acara Pernikahan: ' + (err?.message || 'Coba lagi.'));
-            }
-        }
-    };
+    const handleDeleteProjectType = (type: string) => stageCategoryDelete(
+        'projectTypes',
+        type,
+        projects.some(project => project.projectType === type),
+        `Jenis Acara Pernikahan "${type}" tidak dapat dihapus karena sedang digunakan.`,
+        `Yakin ingin menghapus jenis Acara Pernikahan "${type}"?`,
+    );
 
     const handleAddOrUpdateEventType = async () => {
-        if (!eventTypeInput.trim()) return;
-        const newType = eventTypeInput.trim();
-        const types = profile.eventTypes || [];
-        let newTypes: string[];
-        if (editingEventType) {
-            if (newType !== editingEventType && types.includes(newType)) { alert('Jenis Acara Pernikahan ini sudah ada.'); return; }
-            newTypes = types.map(t => t === editingEventType ? newType : t).sort();
-        } else {
-            if (types.includes(newType)) { alert('Jenis Acara Pernikahan ini sudah ada.'); return; }
-            newTypes = [...types, newType].sort();
-        }
-        try {
-            const updated = await upsertProfile({ id: profile.id, eventTypes: newTypes } as any);
-            setProfile(updated);
-            setEditingEventType(null);
-            setEventTypeInput('');
-        } catch (err: any) {
-            console.error('[Settings] Save event type failed:', err);
-            alert('Gagal menyimpan jenis Acara Pernikahan: ' + (err?.message || 'Coba lagi.'));
-        }
+        stageCategoryInput('eventTypes', eventTypeInput, editingEventType, setEventTypeInput, setEditingEventType, 'Jenis Acara Pernikahan ini sudah ada.');
     };
     const handleEditEventType = (type: string) => { setEditingEventType(type); setEventTypeInput(type); };
-    const handleDeleteEventType = async (type: string) => {
-        const isTypeInUse = projects.some(p => p.clientName === 'Acara Pernikahan Internal' && p.projectType === type);
-        if (isTypeInUse) { alert(`Jenis Acara Pernikahan "${type}" tidak dapat dihapus karena sedang digunakan di kalender.`); return; }
-        if (window.confirm(`Yakin ingin menghapus jenis Acara Pernikahan "${type}"?`)) {
-            const newTypes = (profile.eventTypes || []).filter(t => t !== type);
-            try {
-                const updated = await upsertProfile({ id: profile.id, eventTypes: newTypes } as any);
-                setProfile(updated);
-            } catch (err: any) {
-                console.error('[Settings] Delete event type failed:', err);
-                alert('Gagal menghapus jenis Acara Pernikahan: ' + (err?.message || 'Coba lagi.'));
-            }
-        }
-    };
+    const handleDeleteEventType = (type: string) => stageCategoryDelete(
+        'eventTypes',
+        type,
+        projects.some(project => project.clientName === 'Acara Pernikahan Internal' && project.projectType === type),
+        `Jenis Acara Pernikahan "${type}" tidak dapat dihapus karena sedang digunakan di kalender.`,
+        `Yakin ingin menghapus jenis Acara Pernikahan "${type}"?`,
+    );
 
-    const handleAddOrUpdatePackageCategory = async () => {
-        if (!packageCategoryInput.trim()) return;
-        const newCat = packageCategoryInput.trim();
-        const cats = profile.packageCategories || [];
-        let newCats: string[];
-        if (editingPackageCategory) {
-            if (newCat !== editingPackageCategory && cats.includes(newCat)) { alert('Kategori ini sudah ada.'); return; }
-            newCats = cats.map(c => c === editingPackageCategory ? newCat : c).sort();
-        } else {
-            if (cats.includes(newCat)) { alert('Kategori ini sudah ada.'); return; }
-            newCats = [...cats, newCat].sort();
-        }
-        try {
-            const updated = await upsertProfile({ id: profile.id, packageCategories: newCats } as any);
-            setProfile(updated);
-            setEditingPackageCategory(null);
-            setPackageCategoryInput('');
-        } catch (err: any) {
-            console.error('[Settings] Save package category failed:', err);
-            alert('Gagal menyimpan kategori Package: ' + (err?.message || 'Coba lagi.'));
-        }
+    const handleAddOrUpdatePackageCategory = () => {
+        const previousName = editingPackageCategory;
+        const nextName = packageCategoryInput.trim();
+        const didStage = stageCategoryInput('packageCategories', packageCategoryInput, previousName, setPackageCategoryInput, setEditingPackageCategory, 'Kategori ini sudah ada.');
+        if (!didStage || !previousName || previousName === nextName) return;
+        setPackageCategoryRenames(current => {
+            const sourceName = Object.entries(current).find(([, stagedName]) => stagedName === previousName)?.[0] ?? previousName;
+            const next = { ...current };
+            if (sourceName === nextName) delete next[sourceName];
+            else next[sourceName] = nextName;
+            return next;
+        });
     };
     const handleEditPackageCategory = (cat: string) => { setEditingPackageCategory(cat); setPackageCategoryInput(cat); };
-    const handleDeletePackageCategory = async (cat: string) => {
-        const isUsed = packages.some(p => p.category === cat);
-        if (isUsed) { alert(`Kategori "${cat}" tidak dapat dihapus karena sedang digunakan oleh Package.`); return; }
-        if (window.confirm(`Yakin ingin menghapus kategori Package "${cat}"?`)) {
-            const newCats = (profile.packageCategories || []).filter(c => c !== cat);
-            try {
-                const updated = await upsertProfile({ id: profile.id, packageCategories: newCats } as any);
-                setProfile(updated);
-            } catch (err: any) {
-                console.error('[Settings] Delete package category failed:', err);
-                alert('Gagal menghapus kategori Package: ' + (err?.message || 'Coba lagi.'));
-            }
-        }
-    };
+    const handleDeletePackageCategory = (category: string) => stageCategoryDelete(
+        'packageCategories',
+        category,
+        packages.some(pkg => pkg.category === category),
+        `Kategori "${category}" tidak dapat dihapus karena sedang digunakan oleh Package.`,
+        `Yakin ingin menghapus kategori Package "${category}"?`,
+    );
 
     // --- Tambah dari saran default (hanya yang belum ada) ---
-    const mergeSuggested = async (current: string[], suggested: string[], key: keyof Profile) => {
-        const set = new Set(current || []);
-        const toAdd = suggested.filter(s => !set.has(s));
-        if (toAdd.length === 0) return;
-        const newList = [...(current || []), ...toAdd].sort();
-        try {
-            const updated = await upsertProfile({ id: profile.id, [key]: newList } as any);
-            setProfile(updated);
-        } catch (err: any) {
-            console.error('[Settings] Merge suggested failed:', err);
-            alert('Gagal menambah dari saran: ' + (err?.message || 'Coba lagi.'));
-        }
-    };
-    const handleAddSuggestedIncome = () => mergeSuggested(profile.incomeCategories || [], DEFAULT_INCOME_CATEGORIES, 'incomeCategories');
-    const handleAddSuggestedExpense = () => mergeSuggested(profile.expenseCategories || [], DEFAULT_EXPENSE_CATEGORIES, 'expenseCategories');
-    const handleAddSuggestedProjectTypes = () => mergeSuggested(profile.projectTypes || [], DEFAULT_PROJECT_TYPES, 'projectTypes');
-    const handleAddSuggestedEventTypes = () => mergeSuggested(profile.eventTypes || [], DEFAULT_EVENT_TYPES, 'eventTypes');
-    const handleAddSuggestedPackageCategories = () => mergeSuggested(profile.packageCategories || [], DEFAULT_PACKAGE_CATEGORIES, 'packageCategories');
+    const handleAddSuggestedIncome = () => stageSuggestedCategories('incomeCategories', DEFAULT_INCOME_CATEGORIES);
+    const handleAddSuggestedExpense = () => stageSuggestedCategories('expenseCategories', DEFAULT_EXPENSE_CATEGORIES);
+    const handleAddSuggestedProjectTypes = () => stageSuggestedCategories('projectTypes', DEFAULT_PROJECT_TYPES);
+    const handleAddSuggestedEventTypes = () => stageSuggestedCategories('eventTypes', DEFAULT_EVENT_TYPES);
+    const handleAddSuggestedPackageCategories = () => stageSuggestedCategories('packageCategories', DEFAULT_PACKAGE_CATEGORIES);
 
     const handleAddDefaultProjectStatuses = async () => {
         const current = profile.projectStatusConfig || [];
@@ -2006,19 +1964,6 @@ const Settings: React.FC<SettingsProps> = ({ profile, setProfile, transactions, 
             alert('Gagal menambah status default: ' + (err?.message || 'Coba lagi.'));
         }
     };
-
-    useEffect(() => {
-        if (didInitProjectStatuses) return;
-        if (!profile?.id) return;
-        if (currentUser?.role !== 'Admin') return;
-        if ((profile.projectStatusConfig || []).length > 0) {
-            setDidInitProjectStatuses(true);
-            return;
-        }
-
-        setDidInitProjectStatuses(true);
-        handleAddDefaultProjectStatuses();
-    }, [didInitProjectStatuses, profile?.id, (profile.projectStatusConfig || []).length, currentUser?.role]);
 
     const tabs = [
         { id: 'profile', label: 'Profil Saya', icon: UsersIcon, adminOnly: false },
@@ -2155,9 +2100,7 @@ const Settings: React.FC<SettingsProps> = ({ profile, setProfile, transactions, 
                                     value={profile.termsAndConditions || ''}
                                     rows={15}
                                     defaultValue={DEFAULT_TERMS_AND_CONDITIONS}
-                                    onChange={handleInputChange}
-                                    onUseExample={() => setProfile(p => ({ ...p, termsAndConditions: DEFAULT_TERMS_AND_CONDITIONS }))}
-                                    onSave={() => handleTemplateSave('termsAndConditions')}
+                                    onSave={value => handleTemplateSave('termsAndConditions', value)}
                                     isSaving={isSaving}
                                 />
                                 <h4 className="text-sm font-semibold text-brand-text-light mt-6 mb-2">Template WhatsApp (Calon Pengantin/Leads)</h4>
@@ -2169,9 +2112,7 @@ const Settings: React.FC<SettingsProps> = ({ profile, setProfile, transactions, 
                                     rows={5}
                                     defaultValue={DEFAULT_PACKAGE_SHARE_TEMPLATE}
                                     helper={<>Placeholder: {`{leadName}`}, {`{companyName}`}, {`{packageLink}`}</>}
-                                    onChange={handleInputChange}
-                                    onUseExample={() => setProfile(p => ({ ...p, packageShareTemplate: DEFAULT_PACKAGE_SHARE_TEMPLATE }))}
-                                    onSave={() => handleTemplateSave('packageShareTemplate')}
+                                    onSave={value => handleTemplateSave('packageShareTemplate', value)}
                                     isSaving={isSaving}
                                 />
                                 <TemplateEditor
@@ -2181,9 +2122,7 @@ const Settings: React.FC<SettingsProps> = ({ profile, setProfile, transactions, 
                                     rows={5}
                                     defaultValue={DEFAULT_BOOKING_FORM_TEMPLATE}
                                     helper={<>Placeholder: {`{leadName}`}, {`{companyName}`}, {`{bookingFormLink}`}</>}
-                                    onChange={handleInputChange}
-                                    onUseExample={() => setProfile(p => ({ ...p, bookingFormTemplate: DEFAULT_BOOKING_FORM_TEMPLATE }))}
-                                    onSave={() => handleTemplateSave('bookingFormTemplate')}
+                                    onSave={value => handleTemplateSave('bookingFormTemplate', value)}
                                     isSaving={isSaving}
                                 />
                                 <h4 className="text-sm font-semibold text-brand-text-light mt-8 mb-2 border-t border-brand-border pt-6">Template WhatsApp (Keuangan & Dokumen)</h4>
@@ -2196,9 +2135,7 @@ const Settings: React.FC<SettingsProps> = ({ profile, setProfile, transactions, 
                                     rows={5}
                                     defaultValue={DEFAULT_INVOICE_SHARE_TEMPLATE}
                                     helper={<>Placeholder: {`{clientName}`}, {`{companyName}`}, {`{projectName}`}, {`{totalCost}`}, {`{amountPaid}`}, {`{sisaTagihan}`}, {`{invoiceLink}`}</>}
-                                    onChange={handleInputChange}
-                                    onUseExample={() => setProfile(p => ({ ...p, invoiceShareTemplate: DEFAULT_INVOICE_SHARE_TEMPLATE }))}
-                                    onSave={() => handleTemplateSave('invoiceShareTemplate')}
+                                    onSave={value => handleTemplateSave('invoiceShareTemplate', value)}
                                     isSaving={isSaving}
                                 />
                                 <TemplateEditor
@@ -2208,9 +2145,7 @@ const Settings: React.FC<SettingsProps> = ({ profile, setProfile, transactions, 
                                     rows={5}
                                     defaultValue={DEFAULT_RECEIPT_SHARE_TEMPLATE}
                                     helper={<>Placeholder: {`{clientName}`}, {`{companyName}`}, {`{projectName}`}, {`{txDate}`}, {`{txAmount}`}, {`{txMethod}`}, {`{txDesc}`}, {`{receiptLink}`}</>}
-                                    onChange={handleInputChange}
-                                    onUseExample={() => setProfile(p => ({ ...p, receiptShareTemplate: DEFAULT_RECEIPT_SHARE_TEMPLATE }))}
-                                    onSave={() => handleTemplateSave('receiptShareTemplate')}
+                                    onSave={value => handleTemplateSave('receiptShareTemplate', value)}
                                     isSaving={isSaving}
                                 />
                                 <TemplateEditor
@@ -2220,9 +2155,7 @@ const Settings: React.FC<SettingsProps> = ({ profile, setProfile, transactions, 
                                     rows={5}
                                     defaultValue={DEFAULT_EXPENSE_SHARE_TEMPLATE}
                                     helper={<>Placeholder: {`{targetName}`}, {`{companyName}`}, {`{txDate}`}, {`{txAmount}`}, {`{txMethod}`}, {`{txDesc}`}, {`{receiptLink}`}</>}
-                                    onChange={handleInputChange}
-                                    onUseExample={() => setProfile(p => ({ ...p, expenseShareTemplate: DEFAULT_EXPENSE_SHARE_TEMPLATE }))}
-                                    onSave={() => handleTemplateSave('expenseShareTemplate')}
+                                    onSave={value => handleTemplateSave('expenseShareTemplate', value)}
                                     isSaving={isSaving}
                                 />
                                 <TemplateEditor
@@ -2232,9 +2165,7 @@ const Settings: React.FC<SettingsProps> = ({ profile, setProfile, transactions, 
                                     rows={5}
                                     defaultValue={DEFAULT_PORTAL_SHARE_TEMPLATE}
                                     helper={<>Placeholder: {`{clientName}`}, {`{companyName}`}, {`{portalLink}`}</>}
-                                    onChange={handleInputChange}
-                                    onUseExample={() => setProfile(p => ({ ...p, portalShareTemplate: DEFAULT_PORTAL_SHARE_TEMPLATE }))}
-                                    onSave={() => handleTemplateSave('portalShareTemplate')}
+                                    onSave={value => handleTemplateSave('portalShareTemplate', value)}
                                     isSaving={isSaving}
                                 />
                             </div>
@@ -2304,7 +2235,7 @@ const Settings: React.FC<SettingsProps> = ({ profile, setProfile, transactions, 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 sm:gap-4 md:gap-6 lg:gap-8">
                         <CategoryManager
                             title="Kategori Pemasukan"
-                            categories={profile.incomeCategories}
+                            categories={getCategoryValues('incomeCategories')}
                             inputValue={incomeCategoryInput}
                             onInputChange={setIncomeCategoryInput}
                             onAddOrUpdate={handleAddOrUpdateIncomeCategory}
@@ -2312,13 +2243,16 @@ const Settings: React.FC<SettingsProps> = ({ profile, setProfile, transactions, 
                             onDelete={handleDeleteIncomeCategory}
                             editingValue={editingIncomeCategory}
                             onCancelEdit={() => { setEditingIncomeCategory(null); setIncomeCategoryInput(''); }}
+                            hasChanges={categoryHasChanges('incomeCategories')}
+                            isSaving={categorySavingKey === 'incomeCategories'}
+                            onSaveChanges={() => saveCategoryChanges('incomeCategories')}
                             placeholder="e.g., DP Acara Pernikahan"
                             suggestedDefaults={DEFAULT_INCOME_CATEGORIES}
                             onAddSuggested={handleAddSuggestedIncome}
                         />
                         <CategoryManager
                             title="Kategori Pengeluaran"
-                            categories={profile.expenseCategories}
+                            categories={getCategoryValues('expenseCategories')}
                             inputValue={expenseCategoryInput}
                             onInputChange={setExpenseCategoryInput}
                             onAddOrUpdate={handleAddOrUpdateExpenseCategory}
@@ -2326,13 +2260,16 @@ const Settings: React.FC<SettingsProps> = ({ profile, setProfile, transactions, 
                             onDelete={handleDeleteExpenseCategory}
                             editingValue={editingExpenseCategory}
                             onCancelEdit={() => { setEditingExpenseCategory(null); setExpenseCategoryInput(''); }}
+                            hasChanges={categoryHasChanges('expenseCategories')}
+                            isSaving={categorySavingKey === 'expenseCategories'}
+                            onSaveChanges={() => saveCategoryChanges('expenseCategories')}
                             placeholder="e.g., Gaji Tim / Vendor"
                             suggestedDefaults={DEFAULT_EXPENSE_CATEGORIES}
                             onAddSuggested={handleAddSuggestedExpense}
                         />
                         <CategoryManager
                             title="Jenis Acara Pernikahan"
-                            categories={profile.projectTypes}
+                            categories={getCategoryValues('projectTypes')}
                             inputValue={projectTypeInput}
                             onInputChange={setProjectTypeInput}
                             onAddOrUpdate={handleAddOrUpdateProjectType}
@@ -2340,13 +2277,16 @@ const Settings: React.FC<SettingsProps> = ({ profile, setProfile, transactions, 
                             onDelete={handleDeleteProjectType}
                             editingValue={editingProjectType}
                             onCancelEdit={() => { setEditingProjectType(null); setProjectTypeInput(''); }}
+                            hasChanges={categoryHasChanges('projectTypes')}
+                            isSaving={categorySavingKey === 'projectTypes'}
+                            onSaveChanges={() => saveCategoryChanges('projectTypes')}
                             placeholder="e.g., Pernikahan"
                             suggestedDefaults={DEFAULT_PROJECT_TYPES}
                             onAddSuggested={handleAddSuggestedProjectTypes}
                         />
                         <CategoryManager
                             title="Jenis Acara Pernikahan Internal"
-                            categories={profile.eventTypes}
+                            categories={getCategoryValues('eventTypes')}
                             inputValue={eventTypeInput}
                             onInputChange={setEventTypeInput}
                             onAddOrUpdate={handleAddOrUpdateEventType}
@@ -2354,13 +2294,16 @@ const Settings: React.FC<SettingsProps> = ({ profile, setProfile, transactions, 
                             onDelete={handleDeleteEventType}
                             editingValue={editingEventType}
                             onCancelEdit={() => { setEditingEventType(null); setEventTypeInput(''); }}
+                            hasChanges={categoryHasChanges('eventTypes')}
+                            isSaving={categorySavingKey === 'eventTypes'}
+                            onSaveChanges={() => saveCategoryChanges('eventTypes')}
                             placeholder="e.g., Meeting Pengantin"
                             suggestedDefaults={DEFAULT_EVENT_TYPES}
                             onAddSuggested={handleAddSuggestedEventTypes}
                         />
                         <CategoryManager
                             title="Kategori Package"
-                            categories={profile.packageCategories || []}
+                            categories={getCategoryValues('packageCategories')}
                             inputValue={packageCategoryInput}
                             onInputChange={setPackageCategoryInput}
                             onAddOrUpdate={handleAddOrUpdatePackageCategory}
@@ -2368,6 +2311,9 @@ const Settings: React.FC<SettingsProps> = ({ profile, setProfile, transactions, 
                             onDelete={handleDeletePackageCategory}
                             editingValue={editingPackageCategory}
                             onCancelEdit={() => { setEditingPackageCategory(null); setPackageCategoryInput(''); }}
+                            hasChanges={categoryHasChanges('packageCategories')}
+                            isSaving={categorySavingKey === 'packageCategories'}
+                            onSaveChanges={() => saveCategoryChanges('packageCategories')}
                             placeholder="e.g., Pernikahan"
                             suggestedDefaults={DEFAULT_PACKAGE_CATEGORIES}
                             onAddSuggested={handleAddSuggestedPackageCategories}

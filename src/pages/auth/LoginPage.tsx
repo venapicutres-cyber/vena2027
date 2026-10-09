@@ -46,7 +46,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess, users }) => {
                 .from('users')
                 .select('id,email,full_name,role,permissions')
                 .ilike('email', cleanEmail.replace(/[\\%_]/g, '\\$&'))
-                .single();
+                .maybeSingle();
 
             let finalUser: User;
             if (dbUser && !dbError) {

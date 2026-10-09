@@ -61,12 +61,12 @@ const AddOnItem: React.FC<{ addOn: AddOn }> = ({ addOn }) => {
 };
 
 const initialForm = {
-    clientName: '', email: '', phone: '', instagram: '', date: '', location: '', transportCost: '', selectedAddOnIds: [] as string[], promoCode: '', dp: '', dpPaymentRef: '', durationSelection: '' as string, unitPrice: undefined as number | undefined
+    clientName: '', email: '', phone: '', instagram: '', date: '', location: '', transportCost: '', selectedAddOnIds: [] as string[], promoCode: '', dp: '', durationSelection: '' as string, unitPrice: undefined as number | undefined
 };
 
 
 
-const PublicPackages: React.FC<PublicPackagesProps> = ({ userProfile: initialUserProfile, showNotification, setClients, setProjects, setTransactions, setCards, setLeads, addNotification, cards, projects, promoCodes, setPromoCodes }) => {
+const PublicPackages: React.FC<PublicPackagesProps> = ({ userProfile: initialUserProfile, showNotification, setClients, setProjects, setTransactions, setCards, setLeads, addNotification, cards = [], projects = [], promoCodes = [], setPromoCodes }) => {
     const [packages, setPackages] = useState<Package[]>([]);
     const [addOns, setAddOns] = useState<AddOn[]>([]);
     const [userProfile, setUserProfile] = useState<Profile>(initialUserProfile);
@@ -366,7 +366,7 @@ const PublicPackages: React.FC<PublicPackagesProps> = ({ userProfile: initialUse
             totalCost: totalProject,
             amountPaid: dpAmount,
             paymentStatus: dpAmount >= totalProject ? PaymentStatus.LUNAS : (dpAmount > 0 ? PaymentStatus.DP_TERBAYAR : PaymentStatus.BELUM_BAYAR),
-            notes: `Booking dari halaman Package. Ref: ${formData.dpPaymentRef}${formData.durationSelection ? ` | Durasi dipilih: ${formData.durationSelection}` : ''}`,
+            notes: `Booking dari halaman Package.${formData.durationSelection ? ` Durasi dipilih: ${formData.durationSelection}.` : ''}`,
             durationSelection: formData.durationSelection || undefined,
             unitPrice: formData.unitPrice !== undefined ? Number(formData.unitPrice) : undefined,
             promoCodeId: promoCodeAppliedId,
@@ -482,6 +482,15 @@ const PublicPackages: React.FC<PublicPackagesProps> = ({ userProfile: initialUse
             <div className={`template-wrapper template-${template} min-h-screen`}>
                 <style>{`
                 .template-wrapper { background-color: var(--public-bg); color: var(--public-text-primary); }
+                @media (max-width: 640px) {
+                    .template-wrapper .package-card-cover { height: 144px !important; }
+                    .template-wrapper .package-card-title { font-size: 1rem !important; line-height: 1.35 !important; }
+                    .template-wrapper .package-duration-heading { font-size: 0.75rem !important; }
+                    .template-wrapper .package-duration-option { min-height: 42px !important; padding: 0.5rem !important; }
+                    .template-wrapper .package-duration-label { font-size: 0.6875rem !important; line-height: 1.25 !important; }
+                    .template-wrapper .package-duration-price { font-size: 0.8125rem !important; line-height: 1.2 !important; }
+                    .template-wrapper .package-booking-button { min-height: 44px !important; height: 44px !important; padding: 0 0.875rem !important; font-size: 0.875rem !important; line-height: 1.25rem !important; }
+                }
             `}</style>
                 <div className="w-full max-w-7xl mx-auto py-12 px-4">
                     <header className="text-center mb-12 md:mb-16 widget-animate">
@@ -592,7 +601,7 @@ const PublicPackages: React.FC<PublicPackagesProps> = ({ userProfile: initialUse
                                                     <div className="absolute -top-3 right-3 bg-yellow-400 text-yellow-900 text-xs font-bold px-3 py-1 rounded-full shadow-md z-10">Paling Populer</div>
                                                 )}
                                                 {pkg.coverImage ? (
-                                                    <div className="w-full h-48 overflow-hidden">
+                                                    <div className="package-card-cover w-full h-36 sm:h-48 overflow-hidden">
                                                         <img
                                                             src={pkg.coverImage}
                                                             alt={pkg.name}
@@ -616,7 +625,7 @@ const PublicPackages: React.FC<PublicPackagesProps> = ({ userProfile: initialUse
                                                         />
                                                     </div>
                                                 ) : (
-                                                    <div className="w-full h-48 bg-brand-bg flex items-center justify-center">
+                                                    <div className="package-card-cover w-full h-36 sm:h-48 bg-brand-bg flex items-center justify-center">
                                                         <svg className="w-12 h-12 text-brand-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path>
                                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path>
@@ -624,8 +633,22 @@ const PublicPackages: React.FC<PublicPackagesProps> = ({ userProfile: initialUse
                                                     </div>
                                                 )}
                                                 <div className="p-3 md:p-4 sm:p-6 flex flex-col flex-grow">
-                                                    <h4 className="text-base md:text-lg lg:text-xl font-bold text-gradient">{pkg.name}</h4>
-                                                    <p className="text-xl md:text-2xl lg:text-3xl font-bold text-brand-text-light my-2 md:my-3">{formatCurrency(pkg.price)}</p>
+                                                    <h4 className="package-card-title text-base md:text-lg lg:text-xl font-bold text-gradient">{pkg.name}</h4>
+                                                    {pkg.durationOptions?.length ? (
+                                                        <div className="my-2 md:my-3">
+                                                            <p className="package-duration-heading text-[10px] sm:text-xs font-semibold text-brand-text-secondary mb-1.5">Harga berdasarkan durasi</p>
+                                                            <div className="grid grid-cols-2 gap-1.5">
+                                                                {pkg.durationOptions.map(option => (
+                                                                    <div key={option.label} className="package-duration-option flex items-center justify-between gap-2 rounded-lg border border-brand-border bg-brand-bg/60 px-2 py-1.5 text-[10px] sm:text-xs">
+                                                                        <span className="package-duration-label font-medium text-brand-text-secondary">{option.label}{option.default ? ' · Default' : ''}</span>
+                                                                        <span className="package-duration-price shrink-0 font-bold text-brand-text-light">{formatCurrency(option.price)}</span>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    ) : (
+                                                        <p className="text-xl md:text-2xl lg:text-3xl font-bold text-brand-text-light my-2 md:my-3">{formatCurrency(pkg.price)}</p>
+                                                    )}
                                                     <div className="space-y-1 text-xs md:text-sm text-brand-text-secondary flex-grow">
                                                         {/* Team lines separated */}
                                                         {pkg.photographers && (
@@ -642,7 +665,7 @@ const PublicPackages: React.FC<PublicPackagesProps> = ({ userProfile: initialUse
                                                         ))}
                                                     </div>
                                                     <div className="mt-6 pt-4 border-t border-brand-border">
-                                                        <button onClick={() => handleOpenBookingModal(pkg)} className="button-primary w-full text-center">Booking Package Ini</button>
+                                                        <button onClick={() => handleOpenBookingModal(pkg)} className="package-booking-button button-primary w-full text-center">Booking Package Ini</button>
                                                     </div>
                                                 </div>
                                             </div>
@@ -798,9 +821,9 @@ const PublicPackages: React.FC<PublicPackagesProps> = ({ userProfile: initialUse
                                 <div className="space-y-4">
                                     <h4 className="text-base font-semibold text-gradient border-b border-public-border pb-2">Informasi Anda & Acara Pernikahan</h4>
                                     <div className="input-group"><input type="text" id="clientName" name="clientName" value={formData.clientName} onChange={handleFormChange} className="input-field" placeholder=" " required /><label htmlFor="clientName" className="input-label">Nama Pengantin</label></div>
-                                    <div className="input-group"><input type="email" id="email" name="email" value={formData.email} onChange={handleFormChange} className="input-field" placeholder=" " required /><label htmlFor="email" className="input-label">Email</label></div>
+                                    <div className="input-group"><input type="email" id="email" name="email" value={formData.email} onChange={handleFormChange} className="input-field" placeholder=" " /><label htmlFor="email" className="input-label">Email (Opsional)</label></div>
                                     <div className="input-group"><input type="tel" id="phone" name="phone" value={formData.phone} onChange={handleFormChange} className="input-field" placeholder=" " required /><label htmlFor="phone" className="input-label">Nomor WhatsApp</label></div>
-                                    <div className="input-group"><input type="text" id="instagram" name="instagram" value={formData.instagram} onChange={handleFormChange} className="input-field" placeholder=" " /><label htmlFor="instagram" className="input-label">Instagram</label></div>
+                                    <div className="input-group"><input type="text" id="instagram" name="instagram" value={formData.instagram} onChange={handleFormChange} className="input-field" placeholder=" " /><label htmlFor="instagram" className="input-label">Instagram (Opsional)</label></div>
                                     <div className="input-group">
                                         <input type="date" id="date" name="date" value={formData.date} onChange={handleFormChange} className="input-field" placeholder=" " />
                                         <label htmlFor="date" className="input-label">Tanggal Acara Pernikahan (Opsional)</label>
@@ -862,16 +885,23 @@ const PublicPackages: React.FC<PublicPackagesProps> = ({ userProfile: initialUse
                                             <div className="mt-2">
                                                 <label className="text-xs font-semibold text-public-accent">Jam Kerja</label>
                                                 <p className="text-xs text-public-text-secondary mt-1 mb-2">Pilih durasi. Detail Package akan berubah sesuai pilihan.</p>
-                                                <div className="mt-2 grid grid-cols-2 gap-2">
-                                                    {bookingModal.pkg.durationOptions.map(opt => (
-                                                        <label key={opt.label} className="flex items-center justify-between p-2 rounded-md border border-public-border cursor-pointer hover:bg-public-surface">
-                                                            <span className="text-sm">{opt.label}</span>
-                                                            <div className="flex items-center gap-3">
-                                                                <span className="text-sm text-public-text-secondary">{formatCurrency(opt.price)}</span>
-                                                                <input type="radio" name="durationSelection" value={opt.label} checked={formData.durationSelection === opt.label} onChange={handleFormChange} />
-                                                            </div>
-                                                        </label>
-                                                    ))}
+                                                <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                                    {bookingModal.pkg.durationOptions.map(opt => {
+                                                        const isSelected = formData.durationSelection === opt.label;
+                                                        return (
+                                                            <label key={opt.label} className={`flex min-h-[76px] cursor-pointer flex-col justify-between gap-2 rounded-xl border-2 p-3 transition-colors ${isSelected ? 'border-public-accent bg-public-accent/5 ring-2 ring-public-accent/15' : 'border-public-border bg-public-surface hover:border-public-accent/50'}`}>
+                                                                <span className="flex items-center justify-between gap-2 text-xs font-semibold text-public-text-primary">
+                                                                    {opt.label}
+                                                                    {opt.default && <span className="rounded-full bg-public-accent/10 px-2 py-0.5 text-[9px] font-bold uppercase text-public-accent">Default</span>}
+                                                                </span>
+                                                                <span className="flex items-center justify-between gap-2">
+                                                                    <span className="text-[10px] font-medium text-public-text-secondary">Harga durasi</span>
+                                                                    <span className="text-base font-extrabold text-public-accent">{formatCurrency(opt.price)}</span>
+                                                                    <input type="radio" name="durationSelection" value={opt.label} checked={isSelected} onChange={handleFormChange} className="h-4 w-4 accent-[var(--public-accent)]" />
+                                                                </span>
+                                                            </label>
+                                                        );
+                                                    })}
                                                 </div>
                                             </div>
                                         )}
@@ -905,7 +935,7 @@ const PublicPackages: React.FC<PublicPackagesProps> = ({ userProfile: initialUse
                                     <div className="p-4 bg-public-bg rounded-lg">
                                         <p className="text-sm text-public-text-secondary">Silakan transfer Uang Muka (DP) ke rekening:</p>
                                         <p className="font-semibold text-public-text-primary text-center py-2 bg-public-surface rounded-md border border-public-border mt-2">{userProfile.bankAccount}</p>
-                                        <div className="grid grid-cols-2 gap-4 mt-3">
+                                        <div className="mt-3">
                                             <div className="input-group !mt-0">
                                                 <RupiahInput
                                                     id="dp"
@@ -918,7 +948,6 @@ const PublicPackages: React.FC<PublicPackagesProps> = ({ userProfile: initialUse
                                                 <label htmlFor="dp" className="input-label">Jumlah DP</label>
                                                 <p className="text-xs text-public-text-secondary mt-1 text-right">Saran DP (30%): {formatCurrency(suggestedDp)}</p>
                                             </div>
-                                            <div className="input-group !mt-0"><input type="text" name="dpPaymentRef" id="dpPaymentRef" value={formData.dpPaymentRef} onChange={handleFormChange} className="input-field" placeholder=" " /><label htmlFor="dpPaymentRef" className="input-label">No. Ref / 4 Digit Rek</label></div>
                                         </div>
                                     </div>
                                     <div className="input-group">

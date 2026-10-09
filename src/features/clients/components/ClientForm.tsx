@@ -139,10 +139,14 @@ const ClientForm: React.FC<ClientFormProps> = ({
             .filter(addon => formData.selectedAddOnIds.includes(addon.id))
             .reduce((sum, addon) => sum + addon.price, 0);
 
+        const additionalPackagesPrice = packages
+            .filter(pkg => formData.selectedAdditionalPackageIds?.includes(pkg.id))
+            .reduce((sum, pkg) => sum + pkg.price, 0);
+
         const customItemsPrice = (formData.customItems || [])
             .reduce((sum, item) => sum + (Number(item.price) || 0), 0);
 
-        const addOnsPrice = standardAddOnsPrice + customItemsPrice;
+        const addOnsPrice = standardAddOnsPrice + additionalPackagesPrice + customItemsPrice;
 
         let totalProjectBeforeDiscount = packagePrice + addOnsPrice;
         let discountAmount = 0;
@@ -167,12 +171,13 @@ const ClientForm: React.FC<ClientFormProps> = ({
             standardAddOnsPrice,
             customItemsPrice,
             addOnsPrice,
+            additionalPackagesPrice,
             totalProject,
             remainingPayment,
             discountAmount,
             discountApplied
         };
-    }, [formData.packageId, formData.unitPrice, formData.selectedAddOnIds, formData.customItems, formData.dp, formData.promoCodeId, packages, addOns, promoCodes]);
+    }, [formData.packageId, formData.unitPrice, formData.selectedAddOnIds, formData.selectedAdditionalPackageIds, formData.customItems, formData.dp, formData.promoCodeId, packages, addOns, promoCodes]);
 
     return (
         <form onSubmit={handleInternalSubmit} className="form-compact form-compact--ios-scale">
@@ -408,6 +413,43 @@ const ClientForm: React.FC<ClientFormProps> = ({
                             )}
                         </select>
                     </div>
+
+                    {/* Additional Packages Checkboxes */}
+                    {visiblePackages.length > 1 && formData.packageId && (
+                        <div className="space-y-2">
+                            <label className="text-xs text-[#5A6A85]">Package Tambahan (Opsional)</label>
+                            <div className="p-3 border border-[#EAEFF4] bg-[#F4F6F9] rounded-xl max-h-36 overflow-y-auto space-y-2">
+                                {visiblePackages.filter(p => p.id !== formData.packageId).map(pkg => (
+                                    <label key={pkg.id} className="flex items-center justify-between p-2 rounded-lg hover:bg-white cursor-pointer transition-colors">
+                                        <span className="text-sm font-medium text-[#2A3547]">
+                                            {pkg.name}{pkg.region ? ` (${pkg.region})` : ''}
+                                        </span>
+                                        <div className="flex items-center gap-3">
+                                            <span className="text-xs font-semibold text-[#5A6A85]">
+                                                {formatCurrency(pkg.price)}
+                                            </span>
+                                            <input
+                                                type="checkbox"
+                                                id={`addpkg-${pkg.id}`}
+                                                name="additionalPackages"
+                                                checked={formData.selectedAdditionalPackageIds?.includes(pkg.id)}
+                                                onChange={(e) => {
+                                                    const checked = e.target.checked;
+                                                    setFormData(prev => ({
+                                                        ...prev,
+                                                        selectedAdditionalPackageIds: checked
+                                                            ? [...(prev.selectedAdditionalPackageIds || []), pkg.id]
+                                                            : (prev.selectedAdditionalPackageIds || []).filter(id => id !== pkg.id)
+                                                    }));
+                                                }}
+                                                className="h-4 w-4 rounded flex-shrink-0 text-[#5D87FF] focus:ring-[#5D87FF] transition-colors cursor-pointer"
+                                            />
+                                        </div>
+                                    </label>
+                                ))}
+                            </div>
+                        </div>
+                    )}
 
                     {/* Item & Add-On Tambahan */}
                     <div className="space-y-3">

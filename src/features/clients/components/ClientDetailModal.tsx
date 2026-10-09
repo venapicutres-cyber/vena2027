@@ -154,6 +154,7 @@ const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
   const [projectOverrides, setProjectOverrides] = useState<{ [projectId: string]: Partial<Project> }>({});
   const [editingChargeId, setEditingChargeId] = useState<string | null>(null);
   const [editChargeData, setEditChargeData] = useState({ name: '', amount: '' });
+  const [selectedAddPkg, setSelectedAddPkg] = useState<{ [projectId: string]: string }>({});
   const [showManageTemplates, setShowManageTemplates] = useState(false);
   const [collapsedStates, setCollapsedStates] = useState<{ [projectId: string]: { payment: boolean, charge: boolean } }>({});
   const { templates } = useExtraChargeTemplates();
@@ -168,6 +169,18 @@ const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
     });
     return Array.from(map.entries());
   }, [templates]);
+
+  // Group packages by region
+  const packagesByRegion = useMemo(() => {
+    const map = new Map<string, Package[]>();
+    packages.forEach(pkg => {
+      const region = pkg.region || 'Lainnya';
+      const existing = map.get(region) || [];
+      existing.push(pkg);
+      map.set(region, existing);
+    });
+    return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+  }, [packages]);
 
   if (!client) return null;
 
@@ -246,6 +259,52 @@ const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
       }
     } else {
       showNotification('Harap isi nama biaya dengan benar (jumlah biaya minimal Rp 0).');
+    }
+  };
+
+  const handleAddAdditionalPackage = async (projectId: string, packageId: string) => {
+    const project = clientProjects.find(p => p.id === projectId);
+    const pkg = packages.find(p => p.id === packageId);
+    if (!project || !pkg) return;
+
+    const newAdditionalPackage = { id: pkg.id, name: pkg.name, price: pkg.price };
+    const updatedAdditionalPackages = [...(project.additionalPackages || []), newAdditionalPackage];
+    const newTotalCost = project.totalCost + pkg.price;
+    const remaining = newTotalCost - project.amountPaid;
+    const newPaymentStatus = remaining <= 0 ? PaymentStatus.LUNAS : (project.amountPaid > 0 ? PaymentStatus.DP_TERBAYAR : PaymentStatus.BELUM_BAYAR);
+    
+    try {
+      await updateProjectRow(projectId, { additionalPackages: updatedAdditionalPackages, totalCost: newTotalCost, paymentStatus: newPaymentStatus });
+      setProjects(prev => prev.map(p => p.id === projectId ? { ...p, additionalPackages: updatedAdditionalPackages, totalCost: newTotalCost, paymentStatus: newPaymentStatus } : p));
+      showNotification('Package Tambahan berhasil ditambahkan.');
+    } catch (err) {
+      console.error('Gagal menambahkan package tambahan:', err);
+      showNotification('Gagal menambahkan package tambahan.');
+    }
+  };
+
+  const handleDeleteAdditionalPackage = async (projectId: string, packageIndex: number) => {
+    if (!window.confirm('Hapus package tambahan ini?')) return;
+    const project = clientProjects.find(p => p.id === projectId);
+    if (!project || !project.additionalPackages) return;
+
+    const packageToDelete = project.additionalPackages[packageIndex];
+    if (!packageToDelete) return;
+
+    const updatedAdditionalPackages = [...project.additionalPackages];
+    updatedAdditionalPackages.splice(packageIndex, 1);
+
+    const newTotalCost = project.totalCost - (packageToDelete.price || 0);
+    const remaining = newTotalCost - project.amountPaid;
+    const newPaymentStatus = remaining <= 0 ? PaymentStatus.LUNAS : (project.amountPaid > 0 ? PaymentStatus.DP_TERBAYAR : PaymentStatus.BELUM_BAYAR);
+    
+    try {
+      await updateProjectRow(projectId, { additionalPackages: updatedAdditionalPackages, totalCost: newTotalCost, paymentStatus: newPaymentStatus });
+      setProjects(prev => prev.map(p => p.id === projectId ? { ...p, additionalPackages: updatedAdditionalPackages, totalCost: newTotalCost, paymentStatus: newPaymentStatus } : p));
+      showNotification('Package Tambahan berhasil dihapus.');
+    } catch (err) {
+      console.error('Gagal menghapus package tambahan:', err);
+      showNotification('Gagal menghapus package tambahan.');
     }
   };
 
@@ -614,6 +673,14 @@ const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
               const displayProjectName = (p.projectName || '').replace(/^Acara Pernikahan\s+/i, '').trim();
               const pkg = packages.find(pkg => pkg.id === p.packageId || (p.packageName && pkg.name.trim().toLowerCase() === p.packageName.trim().toLowerCase())) || null;
               const selectedAddOns = (p.addOns || []).filter(a => a && (a.name || a.id));
+              const selectedPackageIds = new Set(packages.map(packageItem => packageItem.id));
+              const additionalPackages = p.additionalPackages?.length
+                ? p.additionalPackages
+                : selectedAddOns.filter(item => item.id && selectedPackageIds.has(item.id) && item.id !== p.packageId);
+              const additionalPackageIds = new Set(additionalPackages.map(item => item.id));
+              const regularAddOns = selectedAddOns.filter(item =>
+                (!item.id || !selectedPackageIds.has(item.id)) && !additionalPackageIds.has(item.id),
+              );
 
               return (
                 <div key={p.id} className="relative">
@@ -666,150 +733,172 @@ const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
                       INPUT SECTION — CATAT PEMBAYARAN & BIAYA TAMBAHAN
                       (ditampilkan di atas detail acara agar mudah diakses)
                   ══════════════════════════════════════════════════════ */}
-                  {transactionFormOpen[p.id] && <div className="mb-4 space-y-2.5">
+                  {transactionFormOpen[p.id] && <div className="mb-4 bg-white rounded-xl border border-gray-300 shadow-sm overflow-hidden p-4 space-y-6">
 
                     {/* ── CATAT PEMBAYARAN MASUK (PELUNASAN / DP) ──────── */}
-                    <div className="bg-white rounded-xl border border-gray-300 shadow-sm overflow-hidden">
-                      {/* Section header */}
-                      <button 
-                        onClick={() => setCollapsedStates(prev => ({ ...prev, [p.id]: { ...(prev[p.id] || { payment: false, charge: false }), payment: !(prev[p.id]?.payment) } }))}
-                        className="client-payment-toggle w-full flex items-center justify-between gap-2 px-3 py-2.5 bg-gray-50 text-left"
-                        aria-expanded={!!collapsedStates[p.id]?.payment}
-                      >
-                        <div className="flex items-center gap-2">
-                          <h4 className="text-xs font-bold text-gray-950">Pembayaran masuk</h4>
-                          <span className="text-[10px] text-gray-600">Sisa {formatCurrency(remainingBalance)}</span>
+                    <div>
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="text-sm font-bold text-gray-950">Catat Pembayaran Masuk</h4>
+                        <span className="text-xs font-semibold bg-gray-100 text-gray-800 px-2.5 py-1 rounded-md border border-gray-200">Sisa Tagihan: {formatCurrency(remainingBalance)}</span>
+                      </div>
+                      
+                      {remainingBalance > 0 && (
+                        <div className="mb-2 flex justify-end">
+                          <button
+                            type="button"
+                            onClick={() => handleNewPaymentChange(p.id, 'amount', String(remainingBalance))}
+                            className="text-[10px] font-bold text-gray-700 underline underline-offset-2 hover:text-gray-950"
+                            title="Isi otomatis dengan seluruh sisa tagihan"
+                          >
+                            Isi otomatis sisa tagihan
+                          </button>
                         </div>
-                        <ChevronDown className={`h-4 w-4 text-gray-500 transition-transform ${collapsedStates[p.id]?.payment ? 'rotate-180' : ''}`} />
-                      </button>
-
-                      {collapsedStates[p.id]?.payment && (
-                        <div className="border-t border-gray-200 p-3">
-                          {remainingBalance > 0 && (
-                            <div className="mb-2 flex justify-end">
-                              <button
-                                type="button"
-                                onClick={() => handleNewPaymentChange(p.id, 'amount', String(remainingBalance))}
-                                className="text-[10px] font-bold text-gray-700 underline underline-offset-2 hover:text-gray-950"
-                                title="Isi otomatis dengan seluruh sisa tagihan"
-                              >
-                                Isi sisa tagihan
-                              </button>
-                            </div>
-                          )}
-                          {remainingBalance <= 0 ? (
-                            <div className="px-4 py-3 flex items-center gap-2 text-gray-800">
-                              <CheckIcon className="w-4 h-4 text-gray-700" />
-                              <span className="text-xs font-semibold">Semua pembayaran telah lunas — tidak ada sisa tagihan.</span>
-                            </div>
-                          ) : (
-                            <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
-                              <div className="sm:col-span-6 space-y-1.5">
-                                <label htmlFor={`amount-${p.id}`} className="text-xs font-semibold text-brand-text-light flex items-center justify-between">
-                                  <span>Jumlah Pembayaran (Rp)</span>
-                                  <span className="text-[10px] font-normal text-brand-text-secondary">Maks: {formatCurrency(remainingBalance)}</span>
-                                </label>
-                                <RupiahInput
-                                  id={`amount-${p.id}`}
-                                  value={newPayments[p.id]?.amount || ''}
-                                  onChange={(raw) => handleNewPaymentChange(p.id, 'amount', raw)}
-                                  max={remainingBalance}
-                                  className="w-full h-[42px] px-3.5 text-xs font-semibold bg-white border border-gray-300 rounded-xl text-gray-950 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-400"
-                                  placeholder="Masukkan nominal bayar..."
-                                />
-                              </div>
-                              <div className="sm:col-span-4 space-y-1.5">
-                                <label htmlFor={`dest-${p.id}`} className="text-xs font-semibold text-brand-text-light">
-                                  Tujuan Rekening / Kas
-                                </label>
-                                <select
-                                  id={`dest-${p.id}`}
-                                  value={newPayments[p.id]?.destinationCardId || ''}
-                                  onChange={e => handleNewPaymentChange(p.id, 'destinationCardId', e.target.value)}
-                                  className="w-full h-[42px] px-3 text-xs font-medium bg-white border border-gray-300 rounded-xl text-gray-950 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-400 cursor-pointer"
-                                >
-                                  <option value="">Pilih Tujuan Rekening / Kas...</option>
-                                  {cards.map(c => (
-                                    <option key={c.id} value={c.id}>
-                                      {c.bankName} {c.lastFourDigits !== 'CASH' ? `**** ${c.lastFourDigits}` : '(Tunai)'}
-                                    </option>
-                                  ))}
-                                </select>
-                              </div>
-                              <div className="sm:col-span-2">
-                                <button
-                                  onClick={() => handleNewPaymentSubmit(p.id)}
-                                  className="w-full h-[42px] bg-gray-950 hover:bg-gray-800 text-white !py-0 flex items-center justify-center gap-1.5 text-xs font-bold rounded-xl shadow-sm transition-all active:scale-95"
-                                >
-                                  <CheckIcon className="w-3.5 h-3.5" />
-                                  Catat
-                                </button>
-                              </div>
-                            </div>
-                          )}
+                      )}
+                      {remainingBalance <= 0 ? (
+                        <div className="px-4 py-3 flex items-center gap-2 bg-gray-50 rounded-lg text-gray-800 border border-gray-200">
+                          <CheckIcon className="w-4 h-4 text-emerald-600" />
+                          <span className="text-xs font-semibold">Semua pembayaran telah lunas — tidak ada sisa tagihan.</span>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
+                          <div className="sm:col-span-6 space-y-1.5">
+                            <label htmlFor={`amount-${p.id}`} className="text-xs font-semibold text-brand-text-light flex items-center justify-between">
+                              <span>Jumlah Pembayaran (Rp)</span>
+                              <span className="text-[10px] font-normal text-brand-text-secondary">Maks: {formatCurrency(remainingBalance)}</span>
+                            </label>
+                            <RupiahInput
+                              id={`amount-${p.id}`}
+                              value={newPayments[p.id]?.amount || ''}
+                              onChange={(raw) => handleNewPaymentChange(p.id, 'amount', raw)}
+                              max={remainingBalance}
+                              className="w-full h-[42px] px-3.5 text-xs font-semibold bg-white border border-gray-300 rounded-xl text-gray-950 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-400"
+                              placeholder="Masukkan nominal bayar..."
+                            />
+                          </div>
+                          <div className="sm:col-span-4 space-y-1.5">
+                            <label htmlFor={`dest-${p.id}`} className="text-xs font-semibold text-brand-text-light">
+                              Tujuan Rekening / Kas
+                            </label>
+                            <select
+                              id={`dest-${p.id}`}
+                              value={newPayments[p.id]?.destinationCardId || ''}
+                              onChange={e => handleNewPaymentChange(p.id, 'destinationCardId', e.target.value)}
+                              className="w-full h-[42px] px-3 text-xs font-medium bg-white border border-gray-300 rounded-xl text-gray-950 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-400 cursor-pointer"
+                            >
+                              <option value="">Pilih Tujuan Rekening / Kas...</option>
+                              {cards.map(c => (
+                                <option key={c.id} value={c.id}>
+                                  {c.bankName} {c.lastFourDigits !== 'CASH' ? `**** ${c.lastFourDigits}` : '(Tunai)'}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          <div className="sm:col-span-2">
+                            <button
+                              onClick={() => handleNewPaymentSubmit(p.id)}
+                              className="w-full h-[42px] bg-gray-950 hover:bg-gray-800 text-white !py-0 flex items-center justify-center gap-1.5 text-xs font-bold rounded-xl shadow-sm transition-all active:scale-95"
+                            >
+                              <CheckIcon className="w-3.5 h-3.5" />
+                              Catat
+                            </button>
+                          </div>
                         </div>
                       )}
                     </div>
 
-                    {/* ── INPUT BIAYA TAMBAHAN / BONUS ─────────────────── */}
-                    <div className="bg-white rounded-xl border border-gray-300 shadow-sm overflow-hidden">
-                      {/* Section header */}
-                      <button 
-                        onClick={() => setCollapsedStates(prev => ({ ...prev, [p.id]: { ...(prev[p.id] || { payment: false, charge: false }), charge: !(prev[p.id]?.charge) } }))}
-                        className="w-full flex items-center justify-between gap-2 px-3 py-2.5 bg-gray-50 text-left"
-                        aria-expanded={!!collapsedStates[p.id]?.charge}
-                      >
-                        <h4 className="text-xs font-bold text-gray-950">Biaya tambahan / bonus</h4>
-                        <ChevronDown className={`h-4 w-4 text-gray-500 transition-transform ${collapsedStates[p.id]?.charge ? 'rotate-180' : ''}`} />
-                      </button>
+                    <hr className="border-gray-200" />
 
-                      {collapsedStates[p.id]?.charge && (
-                        <div className="space-y-3 border-t border-gray-200 p-3">
-                          <div className="flex justify-end">
-                            <button
-                              type="button"
-                              onClick={() => setShowManageTemplates(true)}
-                              className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-700 hover:text-gray-950 bg-white hover:bg-gray-100 border border-gray-300 px-2.5 py-1.5 rounded-xl transition-all active:scale-95"
-                              title="Kelola template biaya tambahan & bonus otomatis"
-                            >
-                              <Settings className="w-3.5 h-3.5" />
-                              <span>Kelola Template</span>
-                            </button>
-                          </div>
-                          {/* Template quick-pick */}
-                          <div>
+                    {/* ── INPUT BIAYA TAMBAHAN / BONUS ─────────────────── */}
+                    <div>
+                      <div className="flex justify-between items-center mb-3">
+                        <h4 className="text-sm font-bold text-gray-950">Tambah Biaya Tambahan / Package</h4>
+                        <button
+                          type="button"
+                          onClick={() => setShowManageTemplates(true)}
+                          className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-700 hover:text-gray-950 bg-white hover:bg-gray-100 border border-gray-300 px-2.5 py-1.5 rounded-xl transition-all active:scale-95"
+                          title="Kelola template biaya tambahan & bonus otomatis"
+                        >
+                          <Settings className="w-3.5 h-3.5" />
+                          <span>Kelola Template</span>
+                        </button>
+                      </div>
+
+                      <div className="space-y-4">
+                        {/* Package Tambahan quick-pick */}
+                        <div>
+                          <h5 className="text-xs font-bold text-gray-950 mb-1.5">Pilih Package Tambahan</h5>
+                          <div className="flex gap-2">
                             <select
-                              id={`charge-template-${p.id}`}
-                              defaultValue=""
+                              id={`charge-package-${p.id}`}
+                              value={selectedAddPkg[p.id] || ''}
                               onChange={e => {
                                 const val = e.target.value;
-                                if (!val) return;
-                                const t = templates.find(item => item.name === val);
-                                if (t) {
-                                  handleApplyTemplate(p.id, { name: t.name, defaultAmount: t.defaultAmount });
-                                }
-                                e.target.value = '';
+                                setSelectedAddPkg(prev => ({ ...prev, [p.id]: val }));
                               }}
-                              className="w-full h-[42px] px-3 text-xs font-medium bg-white border border-gray-300 rounded-lg text-gray-950 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-400 cursor-pointer"
+                              className="flex-1 h-[42px] px-3 text-xs font-medium bg-white border border-gray-300 rounded-lg text-gray-950 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-400 cursor-pointer"
                             >
-                              <option value="">Pilih dari Template Biaya...</option>
-                              {templateCategories.map(([category, items]) => (
-                                <optgroup key={category} label={category}>
-                                  {items.map(t => (
-                                    <option key={`${category}-${t.name}`} value={t.name}>
-                                      {t.name} — {t.defaultAmount === 0 ? 'Gratis (Rp 0)' : formatCurrency(t.defaultAmount)}
+                              <option value="">Pilih Package Tambahan...</option>
+                              {packagesByRegion.map(([region, items]) => (
+                                <optgroup key={region} label={region}>
+                                  {items.map(pkgItem => (
+                                    <option key={pkgItem.id} value={pkgItem.id}>
+                                      {pkgItem.name} — {formatCurrency(pkgItem.price)}
                                     </option>
                                   ))}
                                 </optgroup>
                               ))}
                             </select>
-
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const val = selectedAddPkg[p.id];
+                                if (!val) return;
+                                handleAddAdditionalPackage(p.id, val);
+                                setSelectedAddPkg(prev => ({ ...prev, [p.id]: '' }));
+                              }}
+                              disabled={!selectedAddPkg[p.id]}
+                              className="h-[42px] px-4 bg-gray-950 hover:bg-gray-800 disabled:bg-gray-300 disabled:text-gray-500 text-white flex items-center justify-center gap-1.5 text-xs font-bold rounded-lg shadow-sm transition-all active:scale-95 whitespace-nowrap"
+                            >
+                              <Plus className="w-3.5 h-3.5" />
+                              Pilih
+                            </button>
                           </div>
+                        </div>
+
+                        {/* Template quick-pick */}
+                        <div>
+                          <select
+                            id={`charge-template-${p.id}`}
+                            defaultValue=""
+                            onChange={e => {
+                              const val = e.target.value;
+                              if (!val) return;
+                              const t = templates.find(item => item.name === val);
+                              if (t) {
+                                handleApplyTemplate(p.id, { name: t.name, defaultAmount: t.defaultAmount });
+                              }
+                              e.target.value = '';
+                            }}
+                            className="w-full h-[42px] px-3 text-xs font-medium bg-white border border-gray-300 rounded-lg text-gray-950 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-400 cursor-pointer"
+                          >
+                            <option value="">Pilih dari Template Biaya Tambahan...</option>
+                            {templateCategories.map(([category, items]) => (
+                              <optgroup key={category} label={category}>
+                                {items.map(t => (
+                                  <option key={`${category}-${t.name}`} value={t.name}>
+                                    {t.name} — {t.defaultAmount === 0 ? 'Gratis (Rp 0)' : formatCurrency(t.defaultAmount)}
+                                  </option>
+                                ))}
+                              </optgroup>
+                            ))}
+                          </select>
+                        </div>
+
                         {/* Manual input */}
                         <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end pt-1">
                           <div className="sm:col-span-6 space-y-1.5">
                             <label htmlFor={`charge-name-${p.id}`} className="text-xs font-semibold text-brand-text-light">
-                              Nama Biaya Tambahan
+                              Nama Biaya Tambahan Manual
                             </label>
                             <input
                               type="text"
@@ -820,7 +909,6 @@ const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
                               placeholder="Contoh: Overtime Kru 1 Jam / Drone Aerial / Bonus"
                             />
                           </div>
-
                           <div className="sm:col-span-4 space-y-1.5">
                             <div className="flex items-center justify-between">
                               <label htmlFor={`charge-amount-${p.id}`} className="text-xs font-semibold text-brand-text-light">
@@ -843,7 +931,6 @@ const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
                               placeholder="0"
                             />
                           </div>
-
                           <div className="sm:col-span-2">
                             <button
                               type="button"
@@ -855,9 +942,9 @@ const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
                             </button>
                           </div>
                         </div>
-                        </div>
-                      )}
+                      </div>
                     </div>
+
                   </div>}
                   {/* END INPUT SECTION */}
 
@@ -888,7 +975,8 @@ const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
                                 {formatCurrency(
                                   p.totalCost
                                   - (p.customCosts?.reduce((s, c) => s + c.amount, 0) || 0)
-                                  - selectedAddOns.reduce((s, a) => s + (Number(a.price) || 0), 0)
+                                  - regularAddOns.reduce((s, a) => s + (Number(a.price) || 0), 0)
+                                  - additionalPackages.reduce((s, packageItem) => s + (Number(packageItem.price) || 0), 0)
                                   - (Number(p.transportCost) || 0)
                                 )}
                               </span>
@@ -911,8 +999,49 @@ const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
                             )}
                           </div>
 
+                          {/* Additional packages */}
+                          {additionalPackages.map((item, index) => {
+                            const additionalPackage = packages.find(packageItem => packageItem.id === item.id);
+                            const deliverables = [
+                              ...(additionalPackage?.digitalItems || []),
+                              ...(additionalPackage?.physicalItems || []).map(physicalItem => physicalItem.name),
+                            ].filter(Boolean);
+
+                            return (
+                              <div key={item.id || index} className="group/addpkg relative">
+                                <div className="flex justify-between items-center text-xs pr-6">
+                                  <span className="text-brand-text-secondary font-medium">
+                                    Package Tambahan <span className="font-bold text-brand-text-light">({item.name || additionalPackage?.name})</span>
+                                  </span>
+                                  <span className="font-semibold text-brand-text-light">{formatCurrency(Number(item.price || 0))}</span>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    handleDeleteAdditionalPackage(p.id, index);
+                                  }}
+                                  className="absolute top-0 right-0 text-red-500 opacity-0 group-hover/addpkg:opacity-100 transition-opacity p-0.5 hover:bg-red-50 rounded"
+                                  title="Hapus Package Tambahan"
+                                >
+                                  <Trash2Icon className="w-3.5 h-3.5" />
+                                </button>
+                                {deliverables.length > 0 && (
+                                  <ul className="mt-1.5 pl-2.5 space-y-0.5 border-l-2 border-brand-accent/30 my-1">
+                                    {deliverables.map((deliverable, deliverableIndex) => (
+                                      <li key={`${item.id}-${deliverableIndex}`} className="flex items-start gap-1.5 text-[10px] text-brand-text-secondary">
+                                        <span className="text-brand-accent font-bold mt-px">·</span>
+                                        <span>{deliverable}</span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                )}
+                              </div>
+                            );
+                          })}
+
                           {/* Add-ons */}
-                          {selectedAddOns.length > 0 && selectedAddOns.map((a, idx) => (
+                          {regularAddOns.map((a, idx) => (
                             <div key={a.id || a.name || idx} className="flex justify-between items-center text-xs">
                               <span className="text-brand-text-secondary">+ {a.name} <span className="opacity-60">(Add-on)</span></span>
                               <span className="font-semibold text-brand-text-light">{formatCurrency(Number(a.price || 0))}</span>

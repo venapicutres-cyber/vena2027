@@ -40,6 +40,68 @@
   color-scheme: light;
 }
 
+/* Keep legacy hard-coded brand utilities in sync with the profile accent color. */
+:root [class~="text-[#5D87FF]"] {
+  color: var(--color-accent) !important;
+}
+
+:root [class~="bg-[#5D87FF]"] {
+  background-color: var(--color-accent) !important;
+}
+
+:root [class~="border-[#5D87FF]"] {
+  border-color: var(--color-accent) !important;
+}
+
+:root [class~="bg-[#ECF2FF]"],
+:root [class~="bg-[#5D87FF]/10"] {
+  background-color: var(--color-accent-light) !important;
+}
+
+:root [class~="bg-[#5D87FF]/20"] {
+  background-color: color-mix(in srgb, var(--color-accent) 20%, transparent) !important;
+}
+
+:root [class~="border-[#5D87FF]/20"] {
+  border-color: color-mix(in srgb, var(--color-accent) 20%, transparent) !important;
+}
+
+:root [class~="border-[#5D87FF]/30"] {
+  border-color: color-mix(in srgb, var(--color-accent) 30%, transparent) !important;
+}
+
+:root [class~="border-[#5D87FF]/40"] {
+  border-color: color-mix(in srgb, var(--color-accent) 40%, transparent) !important;
+}
+
+:root [class~="hover:text-[#5D87FF]"]:hover {
+  color: var(--color-accent) !important;
+}
+
+:root [class~="hover:bg-[#5D87FF]"]:hover {
+  background-color: var(--color-accent-hover) !important;
+}
+
+:root [class~="hover:bg-[#4570EA]"]:hover,
+:root [class~="hover:bg-[#4871e3]"]:hover {
+  background-color: var(--color-accent-hover) !important;
+}
+
+:root [class~="hover:bg-[#ECF2FF]"]:hover,
+:root [class~="hover:bg-[#d8e6ff]"]:hover,
+:root [class~="hover:bg-[#dbe6ff]"]:hover,
+:root [class~="hover:bg-[#DCE8FF]"]:hover {
+  background-color: var(--color-accent-light) !important;
+}
+
+:root [class~="focus:border-[#5D87FF]"]:focus {
+  border-color: var(--color-accent) !important;
+}
+
+:root [class~="focus:ring-[#5D87FF]"]:focus {
+  --tw-ring-color: var(--color-accent) !important;
+}
+
 body {
   font-family: 'Plus Jakarta Sans', 'Manrope', 'sans-serif';
   background-color: var(--color-bg);

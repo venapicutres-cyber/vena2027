@@ -11,6 +11,9 @@ interface CategoryManagerProps {
     onDelete: (value: string) => void;
     editingValue: string | null;
     onCancelEdit: () => void;
+    hasChanges: boolean;
+    isSaving: boolean;
+    onSaveChanges: () => void;
     placeholder: string;
     suggestedDefaults?: string[];
     onAddSuggested?: () => void;
@@ -18,15 +21,20 @@ interface CategoryManagerProps {
 
 const CategoryManager: React.FC<CategoryManagerProps> = ({ 
     title, categories, inputValue, onInputChange, onAddOrUpdate, onEdit, onDelete, 
-    editingValue, onCancelEdit, placeholder, suggestedDefaults, onAddSuggested 
+    editingValue, onCancelEdit, hasChanges, isSaving, onSaveChanges, placeholder, suggestedDefaults, onAddSuggested 
 }) => {
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Enter') {
             e.preventDefault();
             onAddOrUpdate();
+        } else if (e.key === 'Escape' && editingValue) {
+            e.preventDefault();
+            onCancelEdit();
         }
     };
+
+    const missingSuggestions = suggestedDefaults?.filter(category => !categories?.includes(category)) || [];
 
     const renderCategoryItem = (category: string) => (
         <div key={category} className="flex items-center justify-between px-2.5 py-1 sm:px-3 sm:py-2 bg-[#F4F6F9] rounded-lg sm:rounded-xl">
@@ -51,28 +59,37 @@ const CategoryManager: React.FC<CategoryManagerProps> = ({
                         onKeyDown={handleKeyDown}
                         placeholder=" "
                         className="input-field"
+                        disabled={isSaving}
                     />
                     <label htmlFor={`input-${title.replace(/\s/g, '')}`} className="input-label">{placeholder}</label>
                 </div>
                 <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
-                    <button type="button" onClick={onAddOrUpdate} className="bg-[#5D87FF] text-white px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg font-semibold text-xs sm:text-sm hover:bg-[#4a6edb] transition-colors">{editingValue ? 'Update' : 'Tambah'}</button>
-                    {editingValue && <button type="button" onClick={onCancelEdit} className="bg-[#F4F6F9] text-[#5A6A85] px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-lg font-semibold text-xs sm:text-sm hover:bg-[#e2e8f0] transition-colors">Batal</button>}
+                    <button type="button" onClick={onAddOrUpdate} disabled={isSaving} className="bg-[#5D87FF] text-white px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg font-semibold text-xs sm:text-sm hover:bg-[#4a6edb] transition-colors disabled:opacity-50">{editingValue ? 'Update' : 'Tambah'}</button>
+                    {editingValue && <button type="button" onClick={onCancelEdit} disabled={isSaving} className="bg-[#F4F6F9] text-[#5A6A85] px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-lg font-semibold text-xs sm:text-sm hover:bg-[#e2e8f0] transition-colors">Batal</button>}
                 </div>
             </div>
             {suggestedDefaults?.length && onAddSuggested && (
                 <div className="mb-2 sm:mb-3">
-                    <button type="button" onClick={onAddSuggested} className="text-[11px] md:text-xs text-[#5D87FF] font-medium hover:underline !min-h-0 !h-auto !p-0">
-                        + Tambah dari saran default
+                    <button type="button" onClick={onAddSuggested} disabled={isSaving || missingSuggestions.length === 0} className="text-[11px] md:text-xs text-[#5D87FF] font-medium hover:underline !min-h-0 !h-auto !p-0 disabled:cursor-default disabled:opacity-60 disabled:no-underline">
+                        {missingSuggestions.length > 0 ? `+ Tambah dari saran default (${missingSuggestions.length})` : 'Semua saran default sudah ditambahkan'}
                     </button>
                 </div>
             )}
             <div className="space-y-1 sm:space-y-1.5 max-h-52 sm:max-h-60 overflow-y-auto pr-1 sm:pr-2">
-                {categories && categories.length > 0 ? categories.map(cat => renderCategoryItem(cat)) : (
+                {categories?.length > 0 ? categories.map(cat => renderCategoryItem(cat)) : (
                     <div className="text-center text-[#5A6A85] text-xs py-2.5 sm:py-4 italic">
                         Belum ada {title.toLowerCase()}
                     </div>
                 )}
             </div>
+            {hasChanges && (
+                <div className="mt-3 flex items-center justify-between gap-2 border-t border-[#EAEFF4] pt-3">
+                    <span className="text-[11px] sm:text-xs text-amber-700">Perubahan belum disimpan</span>
+                    <button type="button" onClick={onSaveChanges} disabled={isSaving} className="bg-[#5D87FF] text-white px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg font-semibold text-xs sm:text-sm hover:bg-[#4a6edb] transition-colors disabled:opacity-50">
+                        {isSaving ? 'Menyimpan...' : 'Simpan perubahan'}
+                    </button>
+                </div>
+            )}
         </div>
     );
 };

@@ -93,14 +93,23 @@ export const useClientFormHandler = ({
 
             // 3. Reconstruct add-ons and custom items
             const standardAddOnIds: string[] = [];
+            const additionalPackageIds: string[] = [];
             const customItemsList: CustomFormItem[] = [];
+            freshProject?.additionalPackages?.forEach((packageItem: AddOn) => {
+                if (packageItem.id) additionalPackageIds.push(packageItem.id);
+            });
             if (freshProject?.addOns && Array.isArray(freshProject.addOns)) {
                 freshProject.addOns.forEach((a: any) => {
                     const matchedStd = addOns.find(
                         std => std.id === a.id || std.name?.toLowerCase().trim() === a.name?.toLowerCase().trim()
                     );
+                    const matchedPkg = packages.find(
+                        pkg => pkg.id === a.id || pkg.name?.toLowerCase().trim() === a.name?.toLowerCase().trim()
+                    );
                     if (matchedStd) {
                         standardAddOnIds.push(matchedStd.id);
+                    } else if (matchedPkg && matchedPkg.id !== freshProject.packageId) {
+                        if (!additionalPackageIds.includes(matchedPkg.id)) additionalPackageIds.push(matchedPkg.id);
                     } else {
                         customItemsList.push({
                             id: a.id || `custom-${Math.random().toString(36).substr(2, 9)}`,
@@ -157,6 +166,7 @@ export const useClientFormHandler = ({
                 location: freshProject?.location || '',
                 date: sanitizeDate(freshProject?.date),
                 packageId: resolvedPackageId,
+                selectedAdditionalPackageIds: additionalPackageIds,
                 selectedAddOnIds: standardAddOnIds,
                 customItems: customItemsList,
                 durationSelection: (freshProject as any)?.durationSelection || '',
@@ -274,11 +284,13 @@ export const useClientFormHandler = ({
 
         const selectedPackage = packages.find(p => p.id === formData.packageId);
         if (!selectedPackage && !formData.projectId) {
-            alert('Harap pilih Package layanan.');
+            alert('Harap pilih minimal 1 Package Utama.');
             return;
         }
 
+        const selectedAdditionalPackages = packages.filter(p => formData.selectedAdditionalPackageIds?.includes(p.id));
         const selectedAddOns = addOns.filter(addon => formData.selectedAddOnIds.includes(addon.id));
+        const additionalPackageRecords = selectedAdditionalPackages.map(pkg => ({ id: pkg.id, name: pkg.name, price: pkg.price }));
         const customItems = (formData.customItems || []).map(ci => ({
             id: ci.id,
             name: ci.name.trim(),
@@ -295,6 +307,7 @@ export const useClientFormHandler = ({
                 : selectedPackage?.price || 0;
         const totalAddOnsPrice =
             selectedAddOns.reduce((sum, addon) => sum + addon.price, 0) +
+            selectedAdditionalPackages.reduce((sum, pkg) => sum + pkg.price, 0) +
             customItems.reduce((sum, item) => sum + item.price, 0);
         const totalBeforeDiscount = packagePriceChosen + totalAddOnsPrice;
         let finalDiscountAmount = 0;
@@ -359,6 +372,7 @@ export const useClientFormHandler = ({
                     clientId: clientId!,
                     projectType: formData.projectType,
                     packageName: selectedPackage?.name || 'Package Acara',
+                    packageId: selectedPackage?.id,
                     date: formData.date,
                     location: formData.location,
                     status: 'Dikonfirmasi',
@@ -382,8 +396,9 @@ export const useClientFormHandler = ({
                     transportCost: undefined,
                     completedDigitalItems: [],
                     addOns: allProjectAddOns,
+                    additionalPackages: additionalPackageRecords,
                 });
-                const mergedProject: Project = { ...createdProject, addOns: allProjectAddOns as any };
+                const mergedProject: Project = { ...createdProject, addOns: allProjectAddOns as any, additionalPackages: additionalPackageRecords };
                 setProjects(prev => [mergedProject, ...prev]);
 
                 // Create DP transaction (persist to Supabase) if any
@@ -539,8 +554,10 @@ export const useClientFormHandler = ({
             const resolvedPackageName = selectedPackage?.name || existingProject?.packageName || formData.projectName || 'Package Acara';
             const resolvedPackageId = selectedPackage?.id || formData.packageId || existingProject?.packageId || '';
 
-            // Selected add-ons + custom items
+            // Selected add-ons + custom items + additional packages
+            const selectedAdditionalPackages = packages.filter(p => formData.selectedAdditionalPackageIds?.includes(p.id));
             const selectedAddOns = addOns.filter(addon => formData.selectedAddOnIds.includes(addon.id));
+            const additionalPackageRecords = selectedAdditionalPackages.map(pkg => ({ id: pkg.id, name: pkg.name, price: pkg.price }));
             const customItems = (formData.customItems || []).map(ci => ({
                 id: ci.id,
                 name: ci.name.trim(),
@@ -562,6 +579,7 @@ export const useClientFormHandler = ({
 
             const totalAddOnsPrice =
                 selectedAddOns.reduce((sum, addon) => sum + addon.price, 0) +
+                selectedAdditionalPackages.reduce((sum, pkg) => sum + pkg.price, 0) +
                 customItems.reduce((sum, item) => sum + item.price, 0);
 
             const totalBeforeDiscount = packagePriceChosen + totalAddOnsPrice;
@@ -611,6 +629,7 @@ export const useClientFormHandler = ({
                         clientId: updatedClientPayload.id,
                         projectType: formData.projectType || 'Wedding',
                         packageName: resolvedPackageName,
+                        packageId: resolvedPackageId,
                         date: formData.date,
                         location: formData.location || '',
                         status: 'Dikonfirmasi',
@@ -626,6 +645,7 @@ export const useClientFormHandler = ({
                         discountAmount: finalDiscountAmount > 0 ? finalDiscountAmount : undefined,
                         address: formData.address || undefined,
                         addOns: allProjectAddOns,
+                        additionalPackages: additionalPackageRecords,
                     });
                     setProjects(prev => [createdProject, ...prev]);
                     setSelectedProject(createdProject);
@@ -724,6 +744,7 @@ export const useClientFormHandler = ({
                     projectType: formData.projectType || existingProject.projectType,
                     packageName: resolvedPackageName,
                     packageId: resolvedPackageId,
+                    additionalPackages: additionalPackageRecords,
                     date: formData.date,
                     location: formData.location !== undefined ? formData.location : existingProject.location,
                     address: formData.address !== undefined ? formData.address : (existingProject.address || updatedClientPayload.address || ''),
@@ -748,6 +769,7 @@ export const useClientFormHandler = ({
                         clientId: updatedProjectPayload.clientId,
                         projectType: updatedProjectPayload.projectType,
                         packageName: updatedProjectPayload.packageName,
+                        packageId: updatedProjectPayload.packageId,
                         date: updatedProjectPayload.date,
                         location: updatedProjectPayload.location,
                         status: updatedProjectPayload.status,
@@ -763,6 +785,7 @@ export const useClientFormHandler = ({
                         discountAmount: updatedProjectPayload.discountAmount || undefined,
                         address: updatedProjectPayload.address || undefined,
                         addOns: allProjectAddOns,
+                        additionalPackages: additionalPackageRecords,
                     });
 
                     const finalMergedProject: Project = {
@@ -770,6 +793,7 @@ export const useClientFormHandler = ({
                         ...updatedProjectRowResult,
                         ...updatedProjectPayload,
                         addOns: allProjectAddOns as any,
+                        additionalPackages: additionalPackageRecords,
                     };
                     setProjects(prev => prev.map(p => (p.id === finalMergedProject.id ? finalMergedProject : p)));
 

@@ -1,4 +1,4 @@
-as-- Data halaman tautan publik (link-in-bio).
+-- Data halaman tautan publik (link-in-bio).
 -- Aman dijalankan berulang kali.
 
 CREATE TABLE IF NOT EXISTS public.bio_link_pages (

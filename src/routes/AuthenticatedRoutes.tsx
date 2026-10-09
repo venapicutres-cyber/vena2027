@@ -515,6 +515,7 @@ export const AuthenticatedRoutes: React.FC<AuthenticatedRoutesProps> = ({
           transactions={transactions}
           projects={projects}
           packages={packages}
+          setPackages={setPackages}
           users={users}
           setUsers={setUsers}
           currentUser={currentUser}
