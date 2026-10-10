@@ -696,7 +696,7 @@ const MonthView: React.FC<MonthViewProps> = ({ currentDate, daysInMonth, eventsB
                 <BottomSheet
                     isOpen={!!selectedDateEvents}
                     onClose={() => setSelectedDateEvents(null)}
-                    title={selectedDateEvents.date.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                    title={(() => { const _d = selectedDateEvents.date; const _wd = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu']; const _mo = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember']; return `${_wd[_d.getDay()]} ${_d.getDate()} ${_mo[_d.getMonth()]} ${_d.getFullYear()}`; })()}
                 >
                     <div className="space-y-4 p-4">
                         {selectedDateEvents.events.length === 0 ? (
@@ -792,7 +792,7 @@ const AgendaView: React.FC<AgendaViewProps> = ({ agendaByDate, profile, clients,
         {agendaByDate.map(([dateString, eventsOnDate]) => (
             <div key={dateString} className="mb-10 animate-fade-in relative">
                 <div className="sticky top-0 z-10 bg-brand-surface/90 backdrop-blur-md py-3 -mx-4 px-4 md:mx-0 md:px-0 mb-4 border-b border-brand-border/40">
-                    <h3 className="font-bold text-base md:text-lg text-brand-text-light">{new Date(dateString).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' })}</h3>
+                    <h3 className="font-bold text-base md:text-lg text-brand-text-light">{(() => { const _d = new Date(dateString); const _wd = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu']; const _mo = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember']; return `${_wd[_d.getDay()]} ${_d.getDate()} ${_mo[_d.getMonth()]}`; })()}</h3>
                 </div>
                 <div className="relative pl-10 md:pl-16 border-l-2 border-brand-border/40 ml-2 md:ml-4">
                     {eventsOnDate.map(event => {
@@ -1595,7 +1595,7 @@ const EventPanel: React.FC<EventPanelProps> = ({ isOpen, mode, selectedEvent, ev
                                         </div>
                                     )}
                                     <div className="mt-6 space-y-5 text-sm">
-                                        <div className="flex items-start gap-4"><ClockIcon className="w-5 h-5 text-brand-text-secondary flex-shrink-0 mt-0.5" /><p className="text-brand-text-primary font-medium">{new Date(selectedEvent.date).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' })} <br /><span className="text-brand-text-secondary">{selectedEvent.startTime && selectedEvent.endTime ? `${selectedEvent.startTime} - ${selectedEvent.endTime}` : 'Sepanjang hari'}</span></p></div>
+                                        <div className="flex items-start gap-4"><ClockIcon className="w-5 h-5 text-brand-text-secondary flex-shrink-0 mt-0.5" /><p className="text-brand-text-primary font-medium">{(() => { const _d = new Date(selectedEvent.date); const _wd = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu']; const _mo = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember']; return `${_wd[_d.getDay()]} ${_d.getDate()} ${_mo[_d.getMonth()]}`; })()} <br /><span className="text-brand-text-secondary">{selectedEvent.startTime && selectedEvent.endTime ? `${selectedEvent.startTime} - ${selectedEvent.endTime}` : 'Sepanjang hari'}</span></p></div>
                                         {selectedEvent.location && (<div className="flex items-start gap-4"><MapPinIcon className="w-5 h-5 text-brand-text-secondary flex-shrink-0 mt-0.5" /><p className="text-brand-text-primary font-medium">{selectedEvent.location}</p></div>)}
                                         {selectedEvent.notes && <div className="flex items-start gap-4"><FileTextIcon className="w-5 h-5 text-brand-text-secondary flex-shrink-0 mt-0.5" /><p className="text-brand-text-primary whitespace-pre-wrap">{selectedEvent.notes}</p></div>}
                                     </div>

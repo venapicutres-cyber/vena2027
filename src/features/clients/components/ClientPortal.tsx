@@ -397,9 +397,10 @@ const MeetingsTab: React.FC<{ projects: Project[] }> = ({ projects }) => {
             const startTime = event.startAt.match(/T(\d{2}:\d{2})/)?.[1];
             const endTime = event.endAt.match(/T(\d{2}:\d{2})/)?.[1];
             const date = event.date || event.startAt.slice(0, 10);
-            const dateLabel = new Date(`${date}T00:00:00`).toLocaleDateString('id-ID', {
-              weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
-            });
+            const _d = new Date(`${date}T00:00:00`);
+            const weekdays = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
+            const months = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+            const dateLabel = `${weekdays[_d.getDay()]} ${_d.getDate()} ${months[_d.getMonth()]} ${_d.getFullYear()}`;
             const isZoom = metadata.kind === 'zoom';
 
             return (
