@@ -3,6 +3,8 @@ import { PaymentStatus } from '../../../types';
 export interface InvoiceLineItem {
   id: string;
   description: string;
+  /** Optional sub-details from a package (digital/physical items). Displayed below description. */
+  packageDetails?: string[];
   quantity: number;
   unitPrice: number;
   totalPrice: number;

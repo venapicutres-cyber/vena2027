@@ -314,7 +314,18 @@ export const InvoicePreviewModal: React.FC<InvoicePreviewModalProps> = ({
                         <td className="py-3.5 px-3 text-center font-semibold text-slate-800 border-r border-black">{idx + 1}</td>
                         <td className="py-3.5 px-4 border-r border-black">
                           <p className="font-bold text-slate-900">{item.description || 'Layanan Fotografi'}</p>
-                          <p className="text-[11px] text-slate-600 mt-0.5">Item rincian paket resmi</p>
+                          {item.packageDetails && item.packageDetails.length > 0 ? (
+                            <ul className="mt-1 space-y-0.5">
+                              {item.packageDetails.map((detail, i) => (
+                                <li key={i} className="flex items-start gap-1 text-[10px] text-slate-500 leading-snug">
+                                  <span className="shrink-0 mt-0.5">-</span>
+                                  <span>{detail}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <p className="text-[11px] text-slate-500 mt-0.5">Item rincian paket resmi</p>
+                          )}
                         </td>
                         <td className="py-3.5 px-3 text-center font-medium text-slate-800 border-r border-black">{item.quantity || 1}</td>
                         <td className="py-3.5 px-4 text-right font-medium text-slate-800 border-r border-black">

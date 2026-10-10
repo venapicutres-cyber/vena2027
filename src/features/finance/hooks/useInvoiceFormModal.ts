@@ -265,10 +265,11 @@ export function useInvoiceFormModal({
       const newItem: InvoiceLineItem = {
         id: generateId(),
         description: item?.description || '',
+        packageDetails: item?.packageDetails,
         quantity: item?.quantity || 1,
         unitPrice: item?.unitPrice || 0,
         totalPrice: (item?.quantity || 1) * (item?.unitPrice || 0),
-        sourceType: 'custom',
+        sourceType: item?.sourceType || 'custom',
       };
       const updated = {
         ...prev,
@@ -347,7 +348,7 @@ export function useInvoiceFormModal({
           phone: formData.clientPhone.trim(),
           whatsapp: formData.clientPhone.trim(),
           address: formData.clientAddress.trim(),
-          since: new Date().getFullYear().toString(),
+          since: new Date().toISOString(),
           status: 'Aktif' as any,
           clientType: 'Langsung' as any,
           lastContact: new Date().toISOString(),

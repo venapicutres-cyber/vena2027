@@ -34,21 +34,25 @@ export const InvoiceLineItemsEditor: React.FC<InvoiceLineItemsEditorProps> = ({
     if (!pkgId) return;
     const pkg = packages.find((p) => p.id === pkgId);
     if (pkg) {
-      const digitalPart =
-        pkg.digitalItems && pkg.digitalItems.length > 0
-          ? ` (Digital: ${pkg.digitalItems.join(', ')})`
-          : '';
-      const physicalPart =
-        pkg.physicalItems && pkg.physicalItems.length > 0
-          ? ` | Fisik: ${pkg.physicalItems.map((p: any) => p.name).join(', ')}`
-          : '';
-      const richDescription = `${pkg.name}${digitalPart}${physicalPart}`;
+      // Build a flat list of package detail bullets for display below the name
+      const details: string[] = [];
+      if (pkg.digitalItems && pkg.digitalItems.length > 0) {
+        pkg.digitalItems.forEach((d) => { if (d) details.push(d); });
+      }
+      if (pkg.physicalItems && pkg.physicalItems.length > 0) {
+        pkg.physicalItems.forEach((p: any) => {
+          const name = typeof p === 'string' ? p : p?.name || '';
+          if (name) details.push(name);
+        });
+      }
 
       onAddItem({
-        description: richDescription,
+        description: pkg.name,           // editable name — just the package name
+        packageDetails: details,          // sub-list shown below, not editable
         quantity: 1,
         unitPrice: pkg.price || 0,
         totalPrice: pkg.price || 0,
+        sourceType: 'package',
       });
       setSelectedPkgId('');
     }
@@ -124,6 +128,16 @@ export const InvoiceLineItemsEditor: React.FC<InvoiceLineItemsEditorProps> = ({
                     placeholder="Nama paket atau rincian layanan..."
                     className="w-full px-3 py-1.5 rounded-lg border border-brand-border bg-brand-surface text-brand-text-primary placeholder:text-brand-text-secondary/50 focus:outline-none focus:ring-1 focus:ring-brand-accent text-xs"
                   />
+                  {item.packageDetails && item.packageDetails.length > 0 && (
+                    <ul className="mt-1.5 space-y-0.5 pl-1">
+                      {item.packageDetails.map((detail, i) => (
+                        <li key={i} className="flex items-start gap-1 text-[10px] text-brand-text-secondary leading-snug">
+                          <span className="mt-0.5 shrink-0 text-brand-accent/60">•</span>
+                          <span>{detail}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </td>
                 <td className="py-2.5 px-3 text-center">
                   <input
@@ -201,6 +215,16 @@ export const InvoiceLineItemsEditor: React.FC<InvoiceLineItemsEditorProps> = ({
                 placeholder="Nama paket atau rincian layanan..."
                 className="w-full px-3 py-2 rounded-lg border border-brand-border bg-brand-surface text-brand-text-primary text-xs focus:outline-none focus:ring-1 focus:ring-brand-accent"
               />
+              {item.packageDetails && item.packageDetails.length > 0 && (
+                <ul className="mt-1 space-y-0.5 pl-1">
+                  {item.packageDetails.map((detail, i) => (
+                    <li key={i} className="flex items-start gap-1 text-[10px] text-brand-text-secondary leading-snug">
+                      <span className="mt-0.5 shrink-0 text-brand-accent/60">•</span>
+                      <span>{detail}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-2">
