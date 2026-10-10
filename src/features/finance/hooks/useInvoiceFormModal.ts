@@ -395,8 +395,12 @@ export function useInvoiceFormModal({
         projectType: formData.projectType || projectToEdit?.projectType || 'Wedding',
         packageName: primaryPackageName,
         packageId: projectToEdit?.packageId,
-        date: formData.invoiceDate,
-        deadlineDate: formData.eventDate || formData.invoiceDate,
+        date: formData.invoiceDate
+          ? formData.invoiceDate + 'T00:00:00+07:00'
+          : null,
+        deadlineDate: (formData.eventDate || formData.invoiceDate)
+          ? (formData.eventDate || formData.invoiceDate) + 'T00:00:00+07:00'
+          : null,
         location: formData.location || '',
         address: formData.address || '',
         // Preserve status, progress and substatus workflows without accidental resets

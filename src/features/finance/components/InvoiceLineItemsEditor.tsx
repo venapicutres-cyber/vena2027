@@ -34,8 +34,18 @@ export const InvoiceLineItemsEditor: React.FC<InvoiceLineItemsEditorProps> = ({
     if (!pkgId) return;
     const pkg = packages.find((p) => p.id === pkgId);
     if (pkg) {
+      const digitalPart =
+        pkg.digitalItems && pkg.digitalItems.length > 0
+          ? ` (Digital: ${pkg.digitalItems.join(', ')})`
+          : '';
+      const physicalPart =
+        pkg.physicalItems && pkg.physicalItems.length > 0
+          ? ` | Fisik: ${pkg.physicalItems.map((p: any) => p.name).join(', ')}`
+          : '';
+      const richDescription = `${pkg.name}${digitalPart}${physicalPart}`;
+
       onAddItem({
-        description: pkg.name,
+        description: richDescription,
         quantity: 1,
         unitPrice: pkg.price || 0,
         totalPrice: pkg.price || 0,

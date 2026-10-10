@@ -88,7 +88,15 @@ export const InvoicePreviewModal: React.FC<InvoicePreviewModalProps> = ({
   const balanceDue = Math.max(0, formData.grandTotal - (formData.amountPaid || 0));
 
   const handlePrint = () => {
-    window.print();
+    const el = document.getElementById('invoice-printable-doc');
+    if (!el) { window.print(); return; }
+    const printWindow = window.open('', '_blank', 'width=900,height=700');
+    if (!printWindow) { window.print(); return; }
+    const invoiceTitle = el.querySelector('h1,h2,[class*="invoice"]')?.textContent || 'Invoice';
+    printWindow.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8" /><title>${invoiceTitle}</title><style>* { box-sizing: border-box; } body { margin: 0; padding: 0; font-family: Inter, Arial, sans-serif; background: #fff; color: #000; } @media print { body { margin: 0; } @page { margin: 12mm; size: A4; } } table { border-collapse: collapse; width: 100%; } th, td { border: 1px solid #000; padding: 6px 10px; text-align: left; vertical-align: top; word-break: break-word; } th { background: #f8fafc; font-weight: 700; } .text-right { text-align: right !important; } .text-center { text-align: center !important; } img { max-width: 100%; height: auto; }</style></head><body>${el.innerHTML}</body></html>`);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => { printWindow.print(); printWindow.close(); }, 500);
   };
 
   const getStatusBadge = () => {
@@ -163,6 +171,11 @@ export const InvoicePreviewModal: React.FC<InvoicePreviewModalProps> = ({
                   #invoice-printable-doc th { white-space: nowrap !important; }
                   #invoice-printable-doc td.text-right { white-space: nowrap !important; }
                 }
+                @media (max-width: 640px) {
+                  #invoice-printable-doc .py-6 { overflow-x: auto !important; display: block !important; }
+                  #invoice-printable-doc table { min-width: 480px !important; }
+                  #invoice-printable-doc .grid { grid-template-columns: 1fr !important; gap: 8px !important; }
+                }
               `}
             </style>
             {/* Header Section */}
@@ -226,7 +239,7 @@ export const InvoicePreviewModal: React.FC<InvoicePreviewModalProps> = ({
             </div>
 
             {/* Client & Project Details */}
-            <div className="grid grid-cols-2 gap-6 py-6 border-b border-slate-100">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 py-6 border-b border-slate-100">
               {/* Bill To */}
               <div className="space-y-2">
                 <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
@@ -343,7 +356,7 @@ export const InvoicePreviewModal: React.FC<InvoicePreviewModalProps> = ({
             </div>
 
             {/* Financial Breakdown & Bank Information */}
-            <div className="grid grid-cols-2 gap-8 pt-4 border-t border-slate-200">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 pt-4 border-t border-slate-200">
               <div className="space-y-4">
                 <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-4 space-y-2">
                   <div className="flex items-center gap-2 text-xs font-bold text-slate-800 uppercase tracking-wider">
@@ -400,7 +413,7 @@ export const InvoicePreviewModal: React.FC<InvoicePreviewModalProps> = ({
             </div>
 
             {/* Signatures Footer */}
-            <div className="grid grid-cols-2 gap-8 pt-8 mt-6 border-t border-slate-100 text-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 pt-8 mt-6 border-t border-slate-100 text-xs">
               <div>
                 <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-8">Penerima / Pengantin,</p>
                 <div className="h-10 border-b border-slate-300 w-40" />
