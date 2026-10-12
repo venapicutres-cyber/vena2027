@@ -1,0 +1,8 @@
+{
+  "name": "Remix vena20209",
+  "description": "Imported from GitHub: ekivena9-code/vena20209",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
