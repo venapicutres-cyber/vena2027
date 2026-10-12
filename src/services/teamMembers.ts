@@ -5,6 +5,9 @@ import { publicNamePatternsFromSlug } from '../utils/publicRouting';
 
 const TABLE = 'team_members';
 
+const isUUID = (s: string): boolean =>
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
+
 export function normalizeTeamMember(row: any): TeamMember {
   return normalize(row);
 }
@@ -162,11 +165,9 @@ export async function getTeamMemberByPortalAccessId(accessId: string): Promise<T
   if (data) return normalize(data);
   if (error) console.warn('[getTeamMemberByPortalAccessId] portal_access_id lookup failed:', error);
 
-  const { data: byId } = await supabase
-    .from(TABLE)
-    .select('*')
-    .eq('id', cleanId)
-    .maybeSingle();
+  const { data: byId } = isUUID(cleanId)
+    ? await supabase.from(TABLE).select('*').eq('id', cleanId).maybeSingle()
+    : { data: null };
   if (byId) return normalize(byId);
 
   const patterns = publicNamePatternsFromSlug(cleanId);

@@ -16,6 +16,10 @@ import FreelancerPortal from '../../team/components/FreelancerPortal';
 
 import { Client, Project, TeamMember, Transaction, Profile, Package, ClientFeedback, Notification } from '../../../types';
 
+/** Returns true only if the string is a valid UUID v4 format */
+const isUUID = (s: string): boolean =>
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
+
 interface PublicRouterProps {
   slug: string;
   clients?: Client[];
@@ -107,7 +111,9 @@ export const PublicRouter: React.FC<PublicRouterProps> = ({
           return;
         }
 
-        const project = await getProjectWithRelations(cleanSlug).catch((): null => null);
+        const project = isUUID(cleanSlug)
+          ? await getProjectWithRelations(cleanSlug).catch((): null => null)
+          : null;
         if (project && isMounted) {
           setResolved({ type: 'project', data: project });
           setLoading(false);
@@ -115,7 +121,9 @@ export const PublicRouter: React.FC<PublicRouterProps> = ({
         }
 
         // 4. Check if it's a contract
-        const contract = await getContract(cleanSlug).catch((): null => null);
+        const contract = isUUID(cleanSlug)
+          ? await getContract(cleanSlug).catch((): null => null)
+          : null;
         if (contract && isMounted) {
           setResolved({ type: 'contract', id: contract.id });
           setLoading(false);
@@ -132,7 +140,9 @@ export const PublicRouter: React.FC<PublicRouterProps> = ({
           return;
         }
 
-        const tx = await getTransaction(cleanSlug).catch((): null => null);
+        const tx = isUUID(cleanSlug)
+          ? await getTransaction(cleanSlug).catch((): null => null)
+          : null;
         if (tx && isMounted) {
           setResolved({ type: 'transaction', id: tx.id });
           setLoading(false);

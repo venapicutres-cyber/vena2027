@@ -4,6 +4,9 @@ import { upsertAssignmentsForProject, listAssignmentsByProject } from './project
 import { listChecklistByProject } from './weddingDayChecklist';
 import { publicNamePatternsFromSlug } from '../utils/publicRouting';
 
+const isUUID = (s: string): boolean =>
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
+
 const PROJECTS = 'projects';
 const PROJECT_ADD_ONS = 'project_add_ons';
 const ADD_ONS = 'add_ons';
@@ -554,7 +557,10 @@ export async function listProjectsByClientId(clientId: string): Promise<Project[
 
 // Enhanced function to get project with all related data
 export async function getProjectWithRelations(projectId: string): Promise<Project | null> {
-  let { data, error } = await supabase.from(PROJECTS).select('*').eq('id', projectId).maybeSingle();
+  // Only query by UUID if the input looks like one; otherwise skip straight to name resolution
+  let { data, error } = isUUID(projectId)
+    ? await supabase.from(PROJECTS).select('*').eq('id', projectId).maybeSingle()
+    : { data: null, error: null };
   if (error) throw error;
 
   if (!data) {

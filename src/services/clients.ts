@@ -5,6 +5,9 @@ import { publicNamePatternsFromSlug } from '../utils/publicRouting';
 
 const TABLE = 'clients';
 
+const isUUID = (s: string): boolean =>
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
+
 export async function syncClientStatusFromProjects(clientId: string): Promise<void> {
   // 1) Read current client status; do not override LEAD / LOST.
   const { data: clientRow, error: clientErr } = await supabase
@@ -138,11 +141,9 @@ export async function getClientByPortalAccessId(accessId: string): Promise<Clien
   if (data) return normalizeClient(data);
   if (error) console.warn('[getClientByPortalAccessId] error querying portal_access_id:', error);
 
-  const { data: byId } = await supabase
-    .from(TABLE)
-    .select('*')
-    .eq('id', cleanId)
-    .maybeSingle();
+  const { data: byId } = isUUID(cleanId)
+    ? await supabase.from(TABLE).select('*').eq('id', cleanId).maybeSingle()
+    : { data: null };
   if (byId) return normalizeClient(byId);
 
   const patterns = publicNamePatternsFromSlug(cleanId);
